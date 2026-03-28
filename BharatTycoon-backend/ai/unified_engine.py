@@ -346,9 +346,152 @@ class UnifiedRecommendationEngine:
             'dynamic_opportunities': dynamic_opportunities  # NEW!
         }
     
-    def _generate_business_from_news(self, headline: str) -> Dict[str, Any]:
-        """Generate NEW business idea from a news headline dynamically"""
+    def _generate_business_from_news(self, headline: str, city: str = "") -> Dict[str, Any]:
+        """Generate NEW business idea from a news headline dynamically - TRULY ADAPTIVE"""
         headline_lower = headline.lower()
+        
+        # More patterns based on what's actually trending in India 2026
+        trending_patterns = [
+            # Super fast delivery / quick commerce
+            (['10 minute', '15 minute', 'quick delivery', 'instant delivery', 'rapid delivery'],
+             lambda: {'name': f'Quick Delivery Service in {city.title()}', 'capital': 40000, 'profit': 20000, 'desc': 'Ultra-fast local delivery in ' + city.title()}),
+            
+            # AI and automation for SMBs
+            (['automation', 'ai tools', 'chatgpt', 'gpt', 'machine learning', 'ml'],
+             lambda: {'name': 'AI Tools for Small Business', 'capital': 35000, 'profit': 25000, 'desc': 'Help SMBs adopt AI automation'}),
+            
+            # Digital payments
+            (['payment', 'upi', 'digital payment', 'qr code'],
+             lambda: {'name': 'Digital Payment Solutions', 'capital': 25000, 'profit': 15000, 'desc': 'UPI payment aggregation for local businesses'}),
+            
+            # Content creation
+            (['content', 'video', 'youtube', 'influencer', 'reels', 'shorts'],
+             lambda: {'name': 'Local Content Creation Studio', 'capital': 50000, 'profit': 30000, 'desc': 'Video/content for local businesses'}),
+            
+            # E-commerce for local
+            (['online', 'ecommerce', 'e-commerce', 'website', 'app'],
+             lambda: {'name': 'Local E-commerce Setup Service', 'capital': 40000, 'profit': 25000, 'desc': 'Help local shops go online'}),
+            
+            # Home services
+            (['home service', 'at home', 'doorstep', 'home cleaning'],
+             lambda: {'name': 'Home Service Business', 'capital': 30000, 'profit': 18000, 'desc': 'Doorstep services in local area'}),
+            
+            # Tuition and coaching
+            (['tution', 'coaching', 'class', 'online class', 'learning'],
+             lambda: {'name': 'Tuition & Coaching Center', 'capital': 25000, 'profit': 15000, 'desc': 'Personalized tutoring services'}),
+            
+            # Food delivery
+            (['food delivery', 'parcel', 'tiffin', 'lunch box', 'biryani'],
+             lambda: {'name': 'Food Delivery Business', 'capital': 45000, 'profit': 22000, 'desc': 'Cloud kitchen + delivery'}),
+            
+            # Grocery delivery
+            (['grocery delivery', 'vegetables', 'fruits delivery', 'kirana delivery'],
+             lambda: {'name': 'Grocery Delivery Service', 'capital': 35000, 'profit': 18000, 'desc': 'Fresh groceries delivered daily'}),
+            
+            # Mobile and tech repair
+            (['repair', 'fix', 'service center', 'phone repair'],
+             lambda: {'name': 'Tech Repair Service', 'capital': 30000, 'profit': 20000, 'desc': 'Phone/laptop repair service'}),
+            
+            # Pet care
+            (['pet', 'dog walking', 'pet grooming', 'animal'],
+             lambda: {'name': 'Pet Care Service', 'capital': 35000, 'profit': 18000, 'desc': 'Pet grooming and care services'}),
+            
+            # Fitness at home
+            (['home workout', 'online fitness', 'personal trainer', 'gym'],
+             lambda: {'name': 'Home Fitness Trainer', 'capital': 20000, 'profit': 25000, 'desc': 'Personal fitness at home'}),
+            
+            # Organic/Natural
+            (['organic', 'natural', 'chemical free', 'healthy'],
+             lambda: {'name': 'Organic Products Store', 'capital': 50000, 'profit': 22000, 'desc': 'Natural & organic products'}),
+            
+            # EV / Electric
+            (['electric vehicle', 'ev charging', 'ev bike', 'electric scooty'],
+             lambda: {'name': 'EV Charging/Rental', 'capital': 80000, 'profit': 35000, 'desc': 'Electric vehicle charging + rental'}),
+            
+            # Solar
+            (['solar', 'solar panel', 'renewable energy'],
+             lambda: {'name': 'Solar Solutions', 'capital': 70000, 'profit': 40000, 'desc': 'Solar panel sales & installation'}),
+            
+            # Real estate
+            (['property', 'rent', 'flat', 'apartment', 'house rent'],
+             lambda: {'name': 'Property Consultant', 'capital': 30000, 'profit': 25000, 'desc': 'Real estate brokerage'}),
+            
+            # Events
+            (['wedding', 'party', 'event', 'birthday'],
+             lambda: {'name': 'Event Planning Service', 'capital': 40000, 'profit': 30000, 'desc': 'Plan events and parties'}),
+            
+            # Laundry
+            (['laundry', 'dry cleaning', 'washing'],
+             lambda: {'name': 'Laundry Service', 'capital': 40000, 'profit': 18000, 'desc': 'Pickup & delivery laundry'}),
+            
+            # Salon at home
+            (['salon', 'beauty', 'spa', 'parlour'],
+             lambda: {'name': 'Home Salon Service', 'capital': 25000, 'profit': 20000, 'desc': 'Beauty services at home'}),
+            
+            # Courier/Logistics
+            (['courier', 'logistics', 'shipping', 'delivery partner'],
+             lambda: {'name': 'Local Courier Service', 'capital': 35000, 'profit': 20000, 'desc': 'Local shipping and courier'}),
+            
+            # Tours/Travel
+            (['tour', 'travel', 'trip', 'booking'],
+             lambda: {'name': 'Local Travel Agent', 'capital': 30000, 'profit': 22000, 'desc': 'Travel and tour bookings'}),
+            
+            # Insurance
+            (['insurance', 'policy', 'claim'],
+             lambda: {'name': 'Insurance Agent', 'capital': 20000, 'profit': 18000, 'desc': 'Insurance policy distribution'}),
+            
+            # Financial services
+            (['loan', 'credit', 'finance', 'bank'],
+             lambda: {'name': 'Financial Services', 'capital': 30000, 'profit': 25000, 'desc': 'Loan and credit facilitation'}),
+            
+            # Printing
+            (['print', 'design', 'banner', 'flex'],
+             lambda: {'name': 'Printing & Design', 'capital': 50000, 'profit': 25000, 'desc': 'Printing and graphic design'}),
+            
+            # Stationery
+            (['stationery', 'books', 'office supplies'],
+             lambda: {'name': 'Stationery Shop', 'capital': 40000, 'profit': 15000, 'desc': 'Books and stationery store'}),
+            
+            # Cyber cafe
+            (['internet', 'wifi', 'cafe', 'computer'],
+             lambda: {'name': 'Internet Cafe & Services', 'capital': 40000, 'profit': 18000, 'desc': 'Internet and computer services'}),
+            
+            # Scrap dealer
+            (['scrap', 'waste', 'recycle', 'junk'],
+             lambda: {'name': 'Scrap & Waste Collection', 'capital': 20000, 'profit': 15000, 'desc': 'Collect and recycle waste'}),
+            
+            # Milk dairy
+            (['milk', 'dairy', 'curd', 'paneer'],
+             lambda: {'name': 'Milk & Dairy Parlour', 'capital': 45000, 'profit': 20000, 'desc': 'Fresh milk and dairy products'}),
+            
+            # Fruits/ Vegetables
+            (['fruits', 'vegetables', 'sabzi', 'green'],
+             lambda: {'name': 'Fruit & Vegetable Shop', 'capital': 40000, 'profit': 18000, 'desc': 'Fresh produce retail'}),
+            
+            # Meat shop
+            (['meat', 'chicken', 'fish', 'mutton'],
+             lambda: {'name': 'Meat & Fish Shop', 'capital': 50000, 'profit': 25000, 'desc': 'Fresh meat and fish'}),
+            
+            # Bakery
+            (['bakery', 'cake', 'pastry', 'bread'],
+             lambda: {'name': 'Bakery', 'capital': 60000, 'profit': 28000, 'desc': 'Fresh bakery products'}),
+            
+            # Tea/Coffee
+            (['tea', 'chai', 'coffee', 'cafe'],
+             lambda: {'name': 'Tea & Coffee Cafe', 'capital': 35000, 'profit': 18000, 'desc': 'Beverages and snacks'}),
+            
+            # Hotel/Lodge
+            (['hotel', 'lodge', 'rooms', 'accommodation'],
+             lambda: {'name': 'Budget Hotel/Lodge', 'capital': 150000, 'profit': 45000, 'desc': 'Budget accommodation'}),
+            
+            # Parking
+            (['parking', 'car', 'vehicle'],
+             lambda: {'name': 'Parking Service', 'capital': 50000, 'profit': 25000, 'desc': 'Secure vehicle parking'}),
+            
+            # Tutoring
+            (['tuiton', 'teaching', 'training', 'coaching'],
+             lambda: {'name': 'Training Institute', 'capital': 40000, 'profit': 25000, 'desc': 'Professional skills training'}),
+        ]
         
         # Dynamic business generators based on news patterns
         patterns = [
@@ -433,7 +576,10 @@ class UnifiedRecommendationEngine:
              lambda: {'name': 'Data Analysis Consultant', 'capital': 40000, 'profit': 30000, 'desc': 'Business analytics服务'}),
         ]
         
-        for keywords, generator in patterns:
+        # Use ALL patterns combined (trending + general)
+        all_patterns = trending_patterns + patterns
+        
+        for keywords, generator in all_patterns:
             for keyword in keywords:
                 if keyword in headline_lower:
                     idea = generator()

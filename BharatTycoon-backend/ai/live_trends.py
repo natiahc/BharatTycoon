@@ -91,12 +91,48 @@ class LiveTrendsService:
         self.last_fetch = 0
         self.cached_city_data = {}
         
-    def fetch_live_news(self, city: str) -> List[Dict[str, Any]]:
-        """Fetch live news using Google News RSS (free, no key required)"""
+    def fetch_web_trends(self, city: str) -> List[Dict[str, Any]]:
+        """Fetch live web search trends for a city using DuckDuckGo (free)"""
         try:
+            # Use DuckDuckGo instant answer API (free, no key)
+            url = "https://api.duckduckgo.com/"
+            params = {
+                'q': f'{city} India business trends 2026',
+                'format': 'json',
+                'no_html': 1,
+                'skip_disambig': 1
+            }
+            response = requests.get(url, params=params, timeout=5)
+            if response.status_code == 200:
+                data = response.json()
+                related = data.get('RelatedTopics', [])
+                trends = []
+                for item in related[:5]:
+                    if 'Text' in item:
+                        trends.append({
+                            'title': item['Text'],
+                            'topic': item.get('Topics', [{}])[0].get('Name', 'General') if item.get('Topics') else 'General'
+                        })
+                return trends
+        except Exception as e:
+            print(f"Web search error: {e}")
+        return []
+    
+    def fetch_live_news(self, city: str) -> List[Dict[str, Any]]:
+        """Fetch live news using Google News RSS - DYNAMIC for ANY city"""
+        try:
+            # First check predefined feeds
             rss_urls = CITY_NEWS_RSS.get(city.lower())
+            
+            # If not found, dynamically generate RSS URLs for this city
             if not rss_urls:
-                return None
+                city_name = city.replace("-", " ").title()
+                rss_urls = [
+                    f"https://news.google.com/rss/search?q={city_name}+business&hl=en-IN&gl=IN&ceid=IN:en",
+                    f"https://news.google.com/rss/search?q={city_name}+startup&hl=en-IN&gl=IN&ceid=IN:en",
+                    f"https://news.google.com/rss/search?q={city_name}+jobs&hl=en-IN&gl=IN&ceid=IN:en",
+                    f"https://news.google.com/rss/search?q={city_name}+investment&hl=en-IN&gl=IN&ceid=IN:en",
+                ]
             
             # Handle both single URL and list of URLs
             if isinstance(rss_urls, str):
