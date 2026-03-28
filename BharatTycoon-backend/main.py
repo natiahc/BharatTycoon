@@ -1,4 +1,6 @@
+from datetime import datetime
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List
 from ai.unified_engine import UnifiedRecommendationEngine
@@ -7,6 +9,14 @@ from ai.unified_risk import MultiFactorRiskAnalyzer
 from ai.unified_advisor import MultiFactorAdvisor
 
 app = FastAPI(title="BharatTycoon AI API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 recommendation_engine = UnifiedRecommendationEngine()
 risk_analyzer = MultiFactorRiskAnalyzer()
@@ -67,13 +77,92 @@ class AdvisorRequest(BaseModel):
 def root():
     return {"message": "BharatTycoon AI API - Business Simulation Engine"}
 
+@app.get("/india/states")
+def get_india_states():
+    """Get all Indian states (lightweight - just names)"""
+    from ai.live_trends import INDIAN_STATES_DATA
+    return {
+        "states": [
+            {"id": state_id, "name": state_data["name"], "city_count": len(state_data["cities"])}
+            for state_id, state_data in INDIAN_STATES_DATA.items()
+        ]
+    }
+
+@app.get("/india/states/{state_id}")
+def get_state_cities(state_id: str):
+    """Get cities for a specific state"""
+    from ai.live_trends import INDIAN_STATES_DATA
+    state_data = INDIAN_STATES_DATA.get(state_id.lower().replace(" ", "_"))
+    if not state_data:
+        return {"error": "State not found"}, 404
+    return {
+        "state": state_data["name"],
+        "cities": [{"id": city.lower().replace(" ", "-"), "name": city.title()} for city in state_data["cities"]]
+    }
+
+@app.get("/india/search")
+def search_locations(q: str):
+    """Search states/cities dynamically"""
+    from ai.live_trends import INDIAN_STATES_DATA
+    q = q.lower()
+    results = {"states": [], "cities": []}
+    
+    # Search states
+    for state_id, state_data in INDIAN_STATES_DATA.items():
+        if q in state_data["name"].lower():
+            results["states"].append({"id": state_id, "name": state_data["name"]})
+        
+        # Search cities in each state
+        for city in state_data["cities"]:
+            if q in city.lower():
+                results["cities"].append({
+                    "id": city.lower().replace(" ", "-"),
+                    "name": city.title(),
+                    "state": state_data["name"]
+                })
+    
+    return results
+
+@app.get("/india/cities")
+def get_all_cities():
+    """Get all cities"""
+    engine = UnifiedRecommendationEngine()
+    return {
+        "cities": [
+            {
+                "id": city_id,
+                "name": city_data["name"],
+                "state": city_data.get("state", ""),
+                "tier": city_data.get("tier", 3)
+            }
+            for city_id, city_data in engine.city_data.items()
+        ]
+    }
+
+@app.get("/news/{city}")
+def get_city_news(city: str):
+    from ai.live_trends import trends_service
+    city_data = trends_service.get_city_live_data(city)
+    trends = trends_service.fetch_live_trends()
+    return {
+        "city": city,
+        "headlines": city_data.get("news", []),
+        "trends": trends[:3],
+        "timestamp": str(datetime.now())
+    }
+
+@app.get("/economic/indicators")
+def get_economic_indicators():
+    from ai.live_trends import trends_service
+    return trends_service.fetch_economic_indicators()
+
 @app.post("/unified/recommendations")
 def get_recommendations(request: UnifiedRequest):
-    result = recommendation_engine.generate_recommendations(
-        request.user.dict(),
-        request.city.dict(),
-        request.market.dict() if request.market else {},
-        request.business.dict() if request.business else {}
+    result = recommendation_engine.generate_dynamic_recommendations(
+        capital=request.user.capital,
+        risk_appetite=request.user.risk_appetite,
+        city=request.city.city,
+        user_interests=request.user.interests
     )
     return result
 

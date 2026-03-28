@@ -1,31 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile } from '../App';
-
-const CITIES = [
-  { id: 'mumbai', name: 'Mumbai', description: 'Financial Capital - High opportunity, High competition', icon: '🏙️', bestFor: ['restaurant', 'retail', 'premium_grocery'], market: 'fastest-growing', demand: 85 },
-  { id: 'delhi', name: 'Delhi', description: 'Large market - Retail & service focused', icon: '🛍️', bestFor: ['retail', 'grocery', 'service'], market: 'large', demand: 78 },
-  { id: 'bangalore', name: 'Bangalore', description: 'Tech Hub - Startup ecosystem - Highest growth', icon: '💻', bestFor: ['tech', 'service', 'premium_grocery', 'fitness'], market: 'tech-hub', demand: 90 },
-  { id: 'chennai', name: 'Chennai', description: 'Manufacturing & Auto - Steady growth', icon: '🏭', bestFor: ['manufacturing', 'service', 'restaurant'], market: 'industrial', demand: 65 },
-  { id: 'hyderabad', name: 'Hyderabad', description: 'IT Corridor - Growing tech scene', icon: '🌐', bestFor: ['tech', 'restaurant', 'fitness'], market: 'emerging', demand: 72 },
-  { id: 'kolkata', name: 'Kolkata', description: 'Traditional markets - Cost-effective', icon: '🎭', bestFor: ['grocery', 'retail', 'restaurant'], market: 'traditional', demand: 55 }
-];
-
-const BUSINESS_TYPES = [
-  { id: 'restaurant', name: 'Restaurant', capital: 150000, risk: 'low', monthlyProfit: 25000, description: 'Food business - steady demand', icon: '🍛', trend: 'stable' },
-  { id: 'grocery', name: 'Kirana Store', capital: 80000, risk: 'low', monthlyProfit: 15000, description: 'Essential goods - stable income', icon: '🥬', trend: 'growing' },
-  { id: 'premium_grocery', name: 'Premium Grocery', capital: 200000, risk: 'medium', monthlyProfit: 35000, description: 'Organic & specialty foods', icon: '🥗', trend: 'booming' },
-  { id: 'retail', name: 'Retail Store', capital: 120000, risk: 'medium', monthlyProfit: 20000, description: 'General merchandise', icon: '👕', trend: 'stable' },
-  { id: 'tech', name: 'Tech Services', capital: 100000, risk: 'high', monthlyProfit: 45000, description: 'Software & IT services', icon: '💻', trend: 'booming' },
-  { id: 'fitness', name: 'Fitness Center', capital: 180000, risk: 'medium', monthlyProfit: 30000, description: 'Gym & wellness', icon: '🏋️', trend: 'growing' },
-  { id: 'pharmacy', name: 'Pharmacy', capital: 150000, risk: 'low', monthlyProfit: 28000, description: 'Medical store - reliable', icon: '💊', trend: 'stable' },
-  { id: 'salon', name: 'Salon', capital: 100000, risk: 'low', monthlyProfit: 22000, description: 'Beauty & grooming', icon: '💇', trend: 'growing' },
-  { id: 'service', name: 'Professional Services', capital: 75000, risk: 'low', monthlyProfit: 35000, description: 'Consulting, coaching', icon: '📋', trend: 'growing' },
-  { id: 'manufacturing', name: 'Manufacturing', capital: 300000, risk: 'high', monthlyProfit: 60000, description: 'Production business', icon: '🏭', trend: 'stable' },
-  { id: 'food_stall', name: 'Food Stall', capital: 50000, risk: 'low', monthlyProfit: 18000, description: 'Quick bites & snacks', icon: '🍕', trend: 'growing' },
-  { id: 'mobile_repair', name: 'Mobile Repair', capital: 40000, risk: 'low', monthlyProfit: 20000, description: 'Electronics repair', icon: '📱', trend: 'booming' },
-  { id: 'tuition', name: 'Tuition Center', capital: 30000, risk: 'low', monthlyProfit: 15000, description: 'Classes & coaching', icon: '📚', trend: 'growing' },
-  { id: 'laundry', name: 'Laundry Service', capital: 60000, risk: 'low', monthlyProfit: 12000, description: 'Dry cleaning & washing', icon: '👔', trend: 'stable' }
-];
 
 const UI_LEVELS = [
   { id: 'game', name: 'Simple Play', description: 'Card-based decisions, guided gameplay', icon: '🎮' },
@@ -33,12 +7,45 @@ const UI_LEVELS = [
   { id: 'expert', name: 'Full Simulation', description: 'All metrics and advanced decisions', icon: '🚀' }
 ];
 
-interface AIRecommendation {
-  business: typeof BUSINESS_TYPES[0];
+interface State {
+  id: string;
+  name: string;
+  city_count?: number;
+}
+
+interface City {
+  id: string;
+  name: string;
+}
+
+interface DynamicRecommendation {
+  business_id: string;
+  business_name: string;
+  capital_required: number;
+  monthly_profit: number;
+  projected_annual_profit: number;
+  risk_level: string;
   score: number;
   reasons: string[];
-  trend: string;
-  demand: number;
+  trend_alignment: number;
+  seasonal_boost: number;
+  city_growth: number;
+}
+
+interface CityData {
+  city: string;
+  city_demand: number;
+  city_growth: number;
+  purchasing_power: number;
+  competition_level: number;
+  current_trends: string[];
+  seasonal_factor: number;
+  economic_indicators: {
+    inflation: number;
+    gdp_growth: number;
+    consumer_confidence: number;
+  };
+  recommendations: DynamicRecommendation[];
 }
 
 interface Props {
@@ -47,105 +54,106 @@ interface Props {
 
 export const OnboardingFlow: React.FC<Props> = ({ onComplete }) => {
   const [step, setStep] = useState(1);
+  const [selectedState, setSelectedState] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
   const [selectedBusiness, setSelectedBusiness] = useState('');
   const [selectedUI, setSelectedUI] = useState<'game' | 'advanced' | 'expert'>('game');
   const [capital, setCapital] = useState(100000);
   const [name, setName] = useState('');
   const [riskAppetite, setRiskAppetite] = useState<'low' | 'medium' | 'high'>('medium');
-  const [aiRecommendations, setAiRecommendations] = useState<AIRecommendation[]>([]);
+  const [aiData, setAiData] = useState<CityData | null>(null);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
-  const [cityData, setCityData] = useState<typeof CITIES[0] | null>(null);
+  const [fetchedCity, setFetchedCity] = useState('');
+  const capitalRef = useRef(capital);
+  const riskAppetiteRef = useRef(riskAppetite);
+  const selectedCityRef = useRef(selectedCity);
+  const selectedStateRef = useRef(selectedState);
+
+  const [states, setStates] = useState<State[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
+  const [loadingLocations, setLoadingLocations] = useState(false);
+
+  // Load states on mount
+  useEffect(() => {
+    fetch('http://localhost:8000/india/states')
+      .then(res => res.json())
+      .then(data => setStates(data.states || []))
+      .catch(err => console.error('Failed to load states:', err));
+  }, []);
+
+  // Load cities when state changes
+  useEffect(() => {
+    if (selectedState) {
+      setLoadingLocations(true);
+      fetch(`http://localhost:8000/india/states/${selectedState}`)
+        .then(res => res.json())
+        .then(data => {
+          setCities(data.cities || []);
+          setLoadingLocations(false);
+        })
+        .catch(err => {
+          console.error('Failed to load cities:', err);
+          setLoadingLocations(false);
+        });
+    } else {
+      setCities([]);
+    }
+  }, [selectedState]);
+
+  const currentStateCities = cities;
+
+  useEffect(() => { capitalRef.current = capital; }, [capital]);
+  useEffect(() => { riskAppetiteRef.current = riskAppetite; }, [riskAppetite]);
+  useEffect(() => { selectedCityRef.current = selectedCity; }, [selectedCity]);
+  useEffect(() => { selectedStateRef.current = selectedState; }, [selectedState]);
 
   useEffect(() => {
-    if (step === 3 && selectedCity) {
+    if (step === 3 && selectedCity && selectedCity !== fetchedCity) {
+      setAiData(null);
       fetchAIRecommendations();
     }
-  }, [step, selectedCity, capital]);
+  }, [step, selectedCity, fetchedCity]);
+
+  useEffect(() => {
+    if (step !== 3) {
+      setFetchedCity('');
+    }
+  }, [step]);
 
   const fetchAIRecommendations = async () => {
     setIsLoadingAI(true);
-    const city = CITIES.find(c => c.id === selectedCity);
-    setCityData(city || null);
-
+    const currentCapital = capitalRef.current;
+    const currentRisk = riskAppetiteRef.current;
+    const currentCity = selectedCityRef.current;
+    
     try {
       const response = await fetch('http://localhost:8000/unified/recommendations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user: {
-            capital,
-            risk_appetite: riskAppetite,
+            capital: currentCapital,
+            risk_appetite: currentRisk,
             experience: 'beginner',
             time_commitment: 'moderate',
             interests: []
           },
           city: {
-            city: selectedCity,
+            city: currentCity,
             business_type: '',
-            purchasing_power: city?.demand ? city.demand / 100 : 0.8,
-            competition_level: city ? (100 - city.demand) / 100 : 0.5,
-            seasonality: [1, 1.1, 1.2, 1.1, 1, 0.9, 0.8, 0.9, 1, 1.1, 1.2, 1.3]
+            purchasing_power: 0.8,
+            competition_level: 0.5,
+            seasonality: [1,1.1,1.2,1.1,1,0.9,0.8,0.9,1,1.1,1.2,1.3]
           }
         })
       });
       
       const data = await response.json();
-      
-      const available = BUSINESS_TYPES.filter(b => b.capital <= capital);
-      
-      const recs: AIRecommendation[] = available.map(biz => {
-        let score = 50;
-        let reasons: string[] = [];
-        
-        if (city?.bestFor.includes(biz.id)) {
-          score += 25;
-          reasons.push(`Strong demand in ${city.name}`);
-        }
-        
-        if (biz.trend === 'booming') {
-          score += 15;
-          reasons.push('Trending industry in 2026');
-        } else if (biz.trend === 'growing') {
-          score += 10;
-          reasons.push('Growing sector');
-        }
-        
-        if (riskAppetite === 'low' && biz.risk === 'low') {
-          score += 10;
-          reasons.push('Matches your risk profile');
-        }
-        
-        if (biz.monthlyProfit / biz.capital > 0.3) {
-          score += 5;
-          reasons.push('High ROI potential');
-        }
-        
-        const cityDemand = city?.demand || 70;
-        const demand = Math.min(100, cityDemand + (biz.trend === 'booming' ? 10 : 0));
-        
-        return {
-          business: biz,
-          score,
-          reasons: reasons.slice(0, 3),
-          trend: biz.trend,
-          demand
-        };
-      });
-      
-      recs.sort((a, b) => b.score - a.score);
-      setAiRecommendations(recs.slice(0, 5));
+      setAiData(data);
+      setFetchedCity(currentCity);
       
     } catch (error) {
-      const available = BUSINESS_TYPES.filter(b => b.capital <= capital);
-      const fallback = available.slice(0, 5).map(biz => ({
-        business: biz,
-        score: 70,
-        reasons: ['Available within your budget'],
-        trend: biz.trend,
-        demand: 70
-      }));
-      setAiRecommendations(fallback);
+      console.error('Failed to fetch recommendations:', error);
     }
     
     setIsLoadingAI(false);
@@ -159,12 +167,11 @@ export const OnboardingFlow: React.FC<Props> = ({ onComplete }) => {
   };
 
   const handleComplete = () => {
-    const business = BUSINESS_TYPES.find(b => b.id === selectedBusiness);
     const profile: UserProfile = {
       id: Date.now().toString(),
       name: name || 'Player',
       city: selectedCity,
-      capital: business?.capital || capital,
+      capital,
       riskAppetite,
       experience: 'beginner',
       timeCommitment: 'moderate',
@@ -237,17 +244,62 @@ export const OnboardingFlow: React.FC<Props> = ({ onComplete }) => {
     </div>
   );
 
-  const renderStep2_City = () => (
+  const renderStep2_State = () => (
     <div style={styles.step}>
       <div style={styles.selectedCapital}>
         <span>💰 Capital: <strong>₹{capital.toLocaleString()}</strong></span>
       </div>
 
-      <h2 style={styles.title}>🌆 Choose Your City</h2>
-      <p style={styles.subtitle}>Where do you want to build your business?</p>
+      <h2 style={styles.title}>🗺️ Choose Your State</h2>
+      <p style={styles.subtitle}>Select the state where you want to start your business</p>
       
       <div style={styles.grid}>
-        {CITIES.map(city => (
+        {states.map(state => (
+          <div
+            key={state.id}
+            onClick={() => { setSelectedState(state.id); setSelectedCity(''); }}
+            style={{
+              ...styles.card,
+              ...(selectedState === state.id ? styles.cardSelected : {})
+            }}
+          >
+            <span style={styles.cardIcon}>🏛️</span>
+            <h3 style={styles.cardTitle}>{state.name}</h3>
+            <p style={styles.cardDesc}>{state.city_count || 0} cities</p>
+          </div>
+        ))}
+      </div>
+
+      <button 
+        style={{ ...styles.primaryButton, opacity: selectedState ? 1 : 0.5 }}
+        disabled={!selectedState}
+        onClick={() => setStep(3)}
+      >
+        Continue →
+      </button>
+    </div>
+  );
+
+  const renderStep3_City = () => {
+    const stateName = states.find(s => s.id === selectedState)?.name || '';
+    
+    return (
+    <div style={styles.step}>
+      <div style={styles.selectedCapital}>
+        <span>💰 Capital: <strong>₹{capital.toLocaleString()}</strong></span>
+        <span style={{marginLeft: 12}}>📍 {stateName}</span>
+      </div>
+
+      <h2 style={styles.title}>🌆 Choose Your City</h2>
+      <p style={styles.subtitle}>Select a city in {stateName}</p>
+      
+      {loadingLocations ? (
+        <div style={{textAlign: 'center', padding: 40}}>
+          <span style={{fontSize: 24}}>⏳ Loading cities...</span>
+        </div>
+      ) : (
+      <div style={styles.grid}>
+        {currentStateCities.map(city => (
           <div
             key={city.id}
             onClick={() => setSelectedCity(city.id)}
@@ -256,90 +308,162 @@ export const OnboardingFlow: React.FC<Props> = ({ onComplete }) => {
               ...(selectedCity === city.id ? styles.cardSelected : {})
             }}
           >
-            <span style={styles.cardIcon}>{city.icon}</span>
+            <span style={styles.cardIcon}>🏙️</span>
             <h3 style={styles.cardTitle}>{city.name}</h3>
-            <p style={styles.cardDesc}>{city.description}</p>
-            <div style={styles.cityMeta}>
-              <span style={styles.demandBadge}>📈 {city.demand}% demand</span>
-              <span style={styles.marketBadge}>{city.market}</span>
-            </div>
           </div>
         ))}
       </div>
+      )}
 
       <button
         style={{ ...styles.primaryButton, opacity: selectedCity ? 1 : 0.5 }}
-        disabled={!selectedCity}
-        onClick={() => setStep(3)}
+        disabled={!selectedCity || loadingLocations}
+        onClick={() => setStep(4)}
       >
         Get AI Recommendations →
       </button>
     </div>
-  );
+  );};
 
-  const renderStep3_Recommendations = () => {
-    const city = CITIES.find(c => c.id === selectedCity);
+  const renderStep4_Recommendations = () => {
+    const getRiskColor = (risk: string) => {
+      if (risk === 'low') return '#22c55e';
+      if (risk === 'medium') return '#f59e0b';
+      return '#ef4444';
+    };
+
+    const getScoreColor = (score: number) => {
+      if (score >= 80) return '#22c55e';
+      if (score >= 60) return '#3b82f6';
+      if (score >= 40) return '#f59e0b';
+      return '#ef4444';
+    };
     
     return (
       <div style={styles.step}>
         <div style={styles.headerRow}>
-          <div>
-            <span style={styles.selectedLabel}>📍 {city?.name}</span>
-            <span style={styles.selectedLabel}>💰 ₹{capital.toLocaleString()}</span>
-          </div>
+          <span style={styles.selectedLabel}>📍 {aiData?.city}</span>
+          <span style={styles.selectedLabel}>💰 ₹{capital.toLocaleString()}</span>
         </div>
 
         <h2 style={styles.title}>🤖 AI-Powered Recommendations</h2>
-        <p style={styles.subtitle}>Based on your capital, city trends & market analysis</p>
-
+        
         {isLoadingAI ? (
-          <div style={styles.loadingBox}>
-            <div style={styles.spinner}>⏳</div>
-            <p>Analyzing market data...</p>
-          </div>
-        ) : (
-          <div style={styles.recommendList}>
-            {aiRecommendations.map((rec, idx) => (
-              <div
-                key={rec.business.id}
-                onClick={() => setSelectedBusiness(rec.business.id)}
-                style={{
-                  ...styles.recCard,
-                  ...(selectedBusiness === rec.business.id ? styles.recCardSelected : {}),
-                  borderColor: selectedBusiness === rec.business.id ? '#22c55e' : undefined
-                }}
-              >
-                <div style={styles.recHeader}>
-                  <span style={styles.recIcon}>{rec.business.icon}</span>
-                  <div style={styles.recTitle}>
-                    <h3>{rec.business.name}</h3>
-                    <span style={styles.recScore}>AI Score: {rec.score}%</span>
-                  </div>
-                  <span style={{
-                    ...styles.trendBadge,
-                    background: rec.trend === 'booming' ? '#ef4444' : rec.trend === 'growing' ? '#22c55e' : '#64748b'
-                  }}>
-                    {rec.trend}
-                  </span>
-                </div>
-                
-                <p style={styles.recDesc}>{rec.business.description}</p>
-                
-                <div style={styles.recMeta}>
-                  <span>💰 ₹{rec.business.capital.toLocaleString()}</span>
-                  <span>📈 ₹{rec.business.monthlyProfit.toLocaleString()}/mo</span>
-                  <span>📊 {rec.demand}% demand</span>
-                </div>
-
-                <div style={styles.reasons}>
-                  {rec.reasons.map((reason, i) => (
-                    <span key={i} style={styles.reasonTag}>✓ {reason}</span>
-                  ))}
-                </div>
+          <div style={styles.aiLoadingBox}>
+            <div style={styles.aiBrain}>
+              <span style={styles.aiEmoji}>🧠</span>
+              <div style={styles.aiPulse}></div>
+            </div>
+            <h3 style={styles.aiTitle}>🤖 AI is Analyzing...</h3>
+            <div style={styles.aiSteps}>
+              <div style={styles.aiStep}>
+                <span style={styles.aiStepIcon}>📊</span>
+                <span>Fetching live market data</span>
               </div>
-            ))}
+              <div style={styles.aiStep}>
+                <span style={styles.aiStepIcon}>📰</span>
+                <span>Analyzing recent news & trends</span>
+              </div>
+              <div style={styles.aiStep}>
+                <span style={styles.aiStepIcon}>📈</span>
+                <span>Processing economic indicators</span>
+              </div>
+              <div style={styles.aiStep}>
+                <span style={styles.aiStepIcon}>🎯</span>
+                <span>Calculating best matches</span>
+              </div>
+            </div>
+            <div style={styles.aiProgress}>
+              <div style={styles.aiProgressBar}></div>
+            </div>
           </div>
-        )}
+        ) : aiData ? (
+          <>
+            <div style={styles.marketInfo}>
+              <div style={styles.infoCard}>
+                <span style={styles.infoLabel}>📈 City Growth</span>
+                <span style={styles.infoValue}>{(aiData.city_growth * 100).toFixed(0)}%</span>
+              </div>
+              <div style={styles.infoCard}>
+                <span style={styles.infoLabel}>💳 Purchasing Power</span>
+                <span style={styles.infoValue}>{(aiData.purchasing_power * 100).toFixed(0)}%</span>
+              </div>
+              <div style={styles.infoCard}>
+                <span style={styles.infoLabel}>🏢 Competition</span>
+                <span style={styles.infoValue}>{aiData.competition_level.toFixed(0)}%</span>
+              </div>
+              <div style={styles.infoCard}>
+                <span style={styles.infoLabel}>📅 Seasonal Factor</span>
+                <span style={styles.infoValue}>{(aiData.seasonal_factor * 100).toFixed(0)}%</span>
+              </div>
+            </div>
+
+            <div style={styles.trendsRow}>
+              <span style={styles.trendLabel}>🔥 2026 Trends:</span>
+              {aiData.current_trends.slice(0, 3).map((trend: any, i: number) => (
+                <span key={i} style={styles.trendTag}>{trend.name}</span>
+              ))}
+            </div>
+
+            <div style={styles.econRow}>
+              <span>📊 GDP: +{aiData.economic_indicators.gdp_growth}%</span>
+              <span>📉 Inflation: {aiData.economic_indicators.inflation}%</span>
+              <span>😊 Confidence: {aiData.economic_indicators.consumer_confidence}%</span>
+            </div>
+
+            <div style={styles.recommendList}>
+              {aiData.recommendations.map((rec) => (
+                <div
+                  key={rec.business_id}
+                  onClick={() => setSelectedBusiness(rec.business_id)}
+                  style={{
+                    ...styles.recCard,
+                    ...(selectedBusiness === rec.business_id ? styles.recCardSelected : {}),
+                  }}
+                >
+                  <div style={styles.recHeader}>
+                    <div style={styles.recTitle}>
+                      <h3>{rec.business_name}</h3>
+                      <span style={{
+                        ...styles.score,
+                        background: getScoreColor(rec.score)
+                      }}>
+                        {rec.score}% Match
+                      </span>
+                    </div>
+                    <span style={{
+                      ...styles.riskBadge,
+                      background: getRiskColor(rec.risk_level)
+                    }}>
+                      {rec.risk_level} risk
+                    </span>
+                  </div>
+                  
+                  <div style={styles.recNumbers}>
+                    <div style={styles.numItem}>
+                      <span style={styles.numLabel}>Capital</span>
+                      <span style={styles.numValue}>₹{rec.capital_required.toLocaleString()}</span>
+                    </div>
+                    <div style={styles.numItem}>
+                      <span style={styles.numLabel}>Monthly Profit</span>
+                      <span style={styles.numValue}>₹{rec.monthly_profit.toLocaleString()}</span>
+                    </div>
+                    <div style={styles.numItem}>
+                      <span style={styles.numLabel}>Annual Projected</span>
+                      <span style={{...styles.numValue, color: '#22c55e'}}>₹{rec.projected_annual_profit.toLocaleString()}</span>
+                    </div>
+                  </div>
+
+                  <div style={styles.reasons}>
+                    {rec.reasons.map((reason, i) => (
+                      <span key={i} style={styles.reasonTag}>✓ {reason}</span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : null}
 
         <button
           style={{ ...styles.primaryButton, opacity: selectedBusiness ? 1 : 0.5 }}
@@ -352,7 +476,7 @@ export const OnboardingFlow: React.FC<Props> = ({ onComplete }) => {
     );
   };
 
-  const renderStep4_PlayStyle = () => (
+  const renderStep5_PlayStyle = () => (
     <div style={styles.step}>
       <h2 style={styles.title}>🎮 Choose Your Play Style</h2>
       <p style={styles.subtitle}>How much detail do you want?</p>
@@ -385,14 +509,15 @@ export const OnboardingFlow: React.FC<Props> = ({ onComplete }) => {
   return (
     <div style={styles.container}>
       <div style={styles.progress}>
-        {[1, 2, 3, 4].map(s => (
+        {[1, 2, 3, 4, 5].map(s => (
           <div key={s} style={{...styles.progressDot, ...(step >= s ? styles.progressDotActive : {})}} />
         ))}
       </div>
       {step === 1 && renderStep1_Capital()}
-      {step === 2 && renderStep2_City()}
-      {step === 3 && renderStep3_Recommendations()}
-      {step === 4 && renderStep4_PlayStyle()}
+      {step === 2 && renderStep2_State()}
+      {step === 3 && renderStep3_City()}
+      {step === 4 && renderStep4_Recommendations()}
+      {step === 5 && renderStep5_PlayStyle()}
     </div>
   );
 };
@@ -423,15 +548,12 @@ const styles: Record<string, React.CSSProperties> = {
   
   selectedCapital: { textAlign: 'center', padding: 12, background: '#1e3a5f', borderRadius: 10, marginBottom: 20 },
   
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24, maxHeight: 320, overflowY: 'auto' },
-  card: { padding: 16, borderRadius: 12, border: '2px solid #334155', background: '#1e293b', cursor: 'pointer', transition: 'all 0.2s', textAlign: 'center' },
+  grid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 },
+  card: { padding: 20, borderRadius: 12, border: '2px solid #334155', background: '#1e293b', cursor: 'pointer', transition: 'all 0.2s', textAlign: 'center' },
   cardSelected: { borderColor: '#3b82f6', background: '#1e3a5f' },
-  cardIcon: { fontSize: 28, display: 'block', marginBottom: 6 },
-  cardTitle: { fontSize: 15, fontWeight: 600, marginBottom: 2, color: '#fff' },
-  cardDesc: { fontSize: 11, color: '#94a3b8', marginBottom: 8 },
-  cityMeta: { display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' },
-  demandBadge: { fontSize: 10, color: '#22c55e' },
-  marketBadge: { fontSize: 10, color: '#64748b', background: '#334155', padding: '2px 6px', borderRadius: 4 },
+  cardIcon: { fontSize: 32, display: 'block', marginBottom: 8 },
+  cardTitle: { fontSize: 16, fontWeight: 600, color: '#fff' },
+  cardDesc: { fontSize: 12, color: '#94a3b8' },
   
   headerRow: { display: 'flex', justifyContent: 'center', gap: 16, marginBottom: 16 },
   selectedLabel: { background: '#1e293b', padding: '6px 12px', borderRadius: 8, fontSize: 13 },
@@ -439,21 +561,46 @@ const styles: Record<string, React.CSSProperties> = {
   loadingBox: { textAlign: 'center', padding: 40, background: '#1e293b', borderRadius: 16, marginBottom: 20 },
   spinner: { fontSize: 32, animation: 'spin 1s linear infinite' },
   
-  recommendList: { display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20, maxHeight: 350, overflowY: 'auto' },
+  marketInfo: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 },
+  infoCard: { background: '#1e293b', padding: 12, borderRadius: 10, textAlign: 'center' },
+  infoLabel: { display: 'block', fontSize: 10, color: '#64748b', marginBottom: 4 },
+  infoValue: { fontSize: 16, fontWeight: 700, color: '#3b82f6' },
+  
+  trendsRow: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 12, justifyContent: 'center' },
+  trendLabel: { fontSize: 12, color: '#94a3b8' },
+  trendTag: { background: '#22c55e22', color: '#22c55e', padding: '4px 10px', borderRadius: 20, fontSize: 11 },
+  
+  econRow: { display: 'flex', justifyContent: 'center', gap: 16, fontSize: 11, color: '#64748b', marginBottom: 16 },
+  
+  recommendList: { display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20, maxHeight: 320, overflowY: 'auto' },
   recCard: { padding: 16, borderRadius: 12, border: '2px solid #334155', background: '#1e293b', cursor: 'pointer', transition: 'all 0.2s' },
   recCardSelected: { borderColor: '#22c55e', background: '#1e3a5f' },
-  recHeader: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 },
-  recIcon: { fontSize: 32 },
-  recTitle: { flex: 1 },
-  recScore: { fontSize: 12, color: '#22c55e', fontWeight: 600 },
-  trendBadge: { padding: '4px 10px', borderRadius: 20, fontSize: 10, color: '#fff', textTransform: 'uppercase' },
-  recDesc: { fontSize: 13, color: '#94a3b8', marginBottom: 8 },
-  recMeta: { display: 'flex', gap: 12, fontSize: 12, color: '#64748b', marginBottom: 8 },
+  recHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  recTitle: { display: 'flex', alignItems: 'center', gap: 10 },
+  score: { padding: '4px 10px', borderRadius: 20, fontSize: 11, color: '#fff', fontWeight: 600 },
+  riskBadge: { padding: '4px 10px', borderRadius: 20, fontSize: 10, color: '#fff', textTransform: 'uppercase' },
+  
+  recNumbers: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 12, padding: 10, background: '#0f172a', borderRadius: 8 },
+  numItem: { textAlign: 'center' },
+  numLabel: { display: 'block', fontSize: 9, color: '#64748b' },
+  numValue: { fontSize: 14, fontWeight: 700, color: '#fff' },
+  
   reasons: { display: 'flex', gap: 6, flexWrap: 'wrap' },
   reasonTag: { fontSize: 11, color: '#22c55e', background: '#22c55e22', padding: '3px 8px', borderRadius: 4 },
   
   verticalGrid: { display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 32 },
   largeCard: { padding: 20, borderRadius: 14, border: '2px solid #334155', background: '#1e293b', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 16 },
   
-  primaryButton: { width: '100%', padding: 16, fontSize: 16, fontWeight: 700, borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: '#fff', cursor: 'pointer' }
+  primaryButton: { width: '100%', padding: 16, fontSize: 16, fontWeight: 700, borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: '#fff', cursor: 'pointer' },
+  
+  aiLoadingBox: { textAlign: 'center', padding: 40, background: '#1e293b', borderRadius: 16, marginBottom: 20 },
+  aiBrain: { position: 'relative', width: 80, height: 80, margin: '0 auto 20px' },
+  aiEmoji: { fontSize: 60, display: 'block', animation: 'pulse 1.5s ease-in-out infinite' },
+  aiPulse: { position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 80, height: 80, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.3) 0%, transparent 70%)', animation: 'pulse-ring 1.5s ease-out infinite' },
+  aiTitle: { fontSize: 20, marginBottom: 20, color: '#3b82f6' },
+  aiSteps: { textAlign: 'left', marginBottom: 20, padding: '0 20px' },
+  aiStep: { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', fontSize: 13, color: '#94a3b8' },
+  aiStepIcon: { fontSize: 16 },
+  aiProgress: { width: '100%', height: 4, background: '#334155', borderRadius: 2, overflow: 'hidden' },
+  aiProgressBar: { height: '100%', background: 'linear-gradient(90deg, #3b82f6, #22c55e)', borderRadius: 2, animation: 'progress 2s ease-in-out infinite' }
 };
