@@ -1,0 +1,5 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "BharatTycoon/BharatTycoon/dist",
+  "installCommand": "npm install"
+}
