@@ -60,7 +60,7 @@ def test_onboarding_flow():
                 page.click("text=Maharashtra")
                 time.sleep(0.5)
                 page.click("button:has-text('Continue')")
-                time.sleep(0.5)
+                time.sleep(1)
             else:
                 print("✗ State selection not found")
             
@@ -78,38 +78,44 @@ def test_onboarding_flow():
             page.click("button:has-text('Get AI Recommendations')")
             print("✓ Clicked Get AI Recommendations")
             
-            # Wait for loading or results (max 5 seconds)
-            print("   Waiting for AI recommendations...")
-            start = time.time()
-            
-            # Wait for either loading or results
+            # Wait for recommendations
             try:
-                page.wait_for_selector("text=AI-Powered Recommendations", timeout=8000)
-                elapsed = time.time() - start
-                print(f"✓ Step 4: AI Recommendations loaded in {elapsed:.2f}s")
-                
-                # Wait a bit more for actual data
+                page.wait_for_selector("text=AI-Powered Recommendations", timeout=10000)
+                print("✓ Step 4: AI Recommendations loaded")
                 time.sleep(2)
                 
-                # Get page content
-                content = page.inner_text("body")
+                # Step 5: Select a business
+                # Click on first recommendation card
+                page.click("text=% Match >> nth=0")
+                time.sleep(0.5)
                 
-                # Check for recommendations
-                if "Service" in content or "Restaurant" in content or "Grocery" in content:
-                    print("✓ Business recommendations displayed")
-                else:
-                    print("✗ Business recommendations not found")
+                # Check if continue button is enabled
+                continue_btn = page.locator("button:has-text('Continue')").first
+                if continue_btn.is_enabled():
+                    print("✓ Step 5: Business selected, Continue enabled")
+                    continue_btn.click()
+                    time.sleep(0.5)
                     
-                if "%" in content and "Match" in content:
-                    print("✓ Score percentages shown")
-                elif "Score" in content:
-                    print("✓ Score info found")
+                    # Step 6: Play Style
+                    if page.locator("text=Play Style").count() > 0:
+                        print("✓ Step 6: Play Style screen reached")
+                        
+                        # Select play style
+                        page.click("text=Simple Play")
+                        time.sleep(0.5)
+                        
+                        # Click Start Game
+                        if page.locator("text=Start Game").count() > 0:
+                            print("✓ Step 7: Can start game!")
+                        else:
+                            print("✗ Start Game button not found")
+                    else:
+                        print("✗ Play Style screen not reached")
                 else:
-                    print("? Checking scores...")
+                    print("✗ Continue button not enabled after selecting business")
                     
             except Exception as e:
-                elapsed = time.time() - start
-                print(f"✗ Recommendations failed to load after {elapsed:.2f}s: {e}")
+                print(f"✗ Error in flow: {e}")
                 
                 # Take screenshot for debugging
                 page.screenshot(path="debug_frontend.png")

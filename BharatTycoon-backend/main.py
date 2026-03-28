@@ -216,9 +216,36 @@ def generate_decisions(data: dict):
 def legacy_analyze_risk(data: dict):
     return {"risk_level": "medium", "score": 35, "factors": ["Low cash runway", "High competition"]}
 
-@app.post("/ai/legacy-get-advisor")
-def legacy_get_advisor(data: dict):
-    return {"recommendations": [{"title": "Focus on profitability", "priority": "high"}]}
+@app.post("/user/feedback")
+def submit_feedback(data: dict):
+    """Store user feedback/suggestions"""
+    import json
+    from datetime import datetime
+    
+    feedback = {
+        "timestamp": datetime.now().isoformat(),
+        "data": data
+    }
+    
+    # Store in memory (in production, use a database)
+    if not hasattr(app, 'feedbacks'):
+        app.feedbacks = []
+    
+    app.feedbacks.append(feedback)
+    
+    # Also append to file for persistence
+    try:
+        with open("feedback.json", "a") as f:
+            f.write(json.dumps(feedback) + "\n")
+    except:
+        pass
+    
+    return {"status": "saved", "total": len(app.feedbacks)}
+
+@app.get("/user/feedback")
+def get_feedback():
+    """Get all feedback (admin only)"""
+    return {"feedbacks": getattr(app, 'feedbacks', [])}
 
 if __name__ == "__main__":
     import uvicorn

@@ -468,7 +468,7 @@ export const OnboardingFlow: React.FC<Props> = ({ onComplete }) => {
         <button
           style={{ ...styles.primaryButton, opacity: selectedBusiness ? 1 : 0.5 }}
           disabled={!selectedBusiness}
-          onClick={() => setStep(4)}
+          onClick={() => setStep(5)}
         >
           Continue →
         </button>
