@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "cd BharatTycoon/BharatTycoon && npm install && npm run build",
   "outputDirectory": "BharatTycoon/BharatTycoon/dist",
-  "installCommand": "npm install"
+  "installCommand": "cd BharatTycoon/BharatTycoon && npm install"
 }
