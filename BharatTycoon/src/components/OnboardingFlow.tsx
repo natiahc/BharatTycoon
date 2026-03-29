@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile } from '../App';
 
+const API_BASE = 'https://bharattycoon.onrender.com';
+
 const UI_LEVELS = [
   { id: 'game', name: 'Simple Play', description: 'Card-based decisions, guided gameplay', icon: '🎮' },
   { id: 'advanced', name: 'Detailed View', description: 'More options with financial tracking', icon: '📊' },
@@ -75,7 +77,7 @@ export const OnboardingFlow: React.FC<Props> = ({ onComplete }) => {
 
   // Load states on mount
   useEffect(() => {
-    fetch('http://localhost:8000/india/states')
+    fetch(`${API_BASE}/india/states`)
       .then(res => res.json())
       .then(data => setStates(data.states || []))
       .catch(err => console.error('Failed to load states:', err));
@@ -85,7 +87,7 @@ export const OnboardingFlow: React.FC<Props> = ({ onComplete }) => {
   useEffect(() => {
     if (selectedState) {
       setLoadingLocations(true);
-      fetch(`http://localhost:8000/india/states/${selectedState}`)
+      fetch(`${API_BASE}/india/states/${selectedState}`)
         .then(res => res.json())
         .then(data => {
           setCities(data.cities || []);
@@ -127,7 +129,7 @@ export const OnboardingFlow: React.FC<Props> = ({ onComplete }) => {
     const currentCity = selectedCityRef.current;
     
     try {
-      const response = await fetch('http://localhost:8000/unified/recommendations', {
+      const response = await fetch(`${API_BASE}/unified/recommendations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
