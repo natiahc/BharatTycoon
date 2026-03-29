@@ -161,7 +161,13 @@ export class GameEngine {
         revenue: this.state.revenue,
         businessType: ''
       }).overallRisk,
-      riskScore: this.state.riskScore,
+      riskScore: assessRisk({
+        month: this.state.month,
+        cash: this.state.cash,
+        costs: this.state.costs,
+        revenue: this.state.revenue,
+        businessType: ''
+      }).riskScore,
       capital: this.config.startingCapital
     };
     return getAdvisorRecommendations(ctx);

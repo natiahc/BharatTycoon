@@ -7,7 +7,7 @@ export interface DemandPrediction {
 }
 
 export interface CityDemandProfile {
-  city: string;
+  city?: string;
   baseDemand: Record<string, number>;
   seasonalFactors: number[];
   growthRate: number;

@@ -31,7 +31,7 @@ export function getWorkingCapitalConfig(businessType: string): WorkingCapitalCon
   const key = Object.keys(INDUSTRY_CONFIGS).find(k => 
     businessType.toLowerCase().includes(k)
   );
-  return INDUSTRY_CONFIGS[key] || INDUSTRY_CONFIGS.service;
+  return key ? INDUSTRY_CONFIGS[key] : INDUSTRY_CONFIGS.service;
 }
 
 export function calculateWorkingCapital(

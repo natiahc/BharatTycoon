@@ -1,7 +1,7 @@
 import { predictDemand } from './demandPredictionEngine';
 import { assessRisk, RiskLevel } from './riskDetectionEngine';
 import { getAdvisorRecommendations, AdvisorContext } from './smartAdvisorEngine';
-import { getWorkingCapitalMetrics } from './workingCapitalEngine';
+import { calculateWorkingCapital } from './workingCapitalEngine';
 import { getPhaseForMonth } from './startupJourneySimulator';
 import { getEventsForMonth, applyEventImpact } from './dynamicSystemEngine';
 

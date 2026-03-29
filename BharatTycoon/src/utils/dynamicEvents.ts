@@ -147,9 +147,14 @@ export const MONTHLY_EVENTS: GameEvent[] = [
     title: 'Tax Obligations',
     description: 'Time to set aside money for taxes.',
     type: 'market',
-    automatic: {
-      impact: { revenue: 0, costs: Math.round(state.revenue * 0.15), cash: -Math.round(state.revenue * 0.15), risk: 0 }
-    },
+    choices: [
+      {
+        id: 'set_aside',
+        label: 'Set Aside 15% for Taxes',
+        outcome: 'Funds reserved for tax payments.',
+        impact: { revenue: 0, costs: 0, cash: 0, risk: 0 }
+      }
+    ],
     trigger: (month, state) => month % 3 === 0 && state.revenue > 0
   },
   {
