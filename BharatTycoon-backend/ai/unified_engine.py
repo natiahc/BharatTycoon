@@ -2,6 +2,8 @@ import random
 import math
 from datetime import datetime
 from typing import Dict, List, Any
+import numpy as np
+from sklearn.ensemble import RandomForestRegressor
 from ai.live_trends import trends_service, INDIAN_STATES_DATA
 
 # Helper to get city data dynamically
@@ -296,6 +298,14 @@ class UnifiedRecommendationEngine:
                 {'id': 'jute_product', 'capital': 50000, 'profit': 15000, 'risk': 'low'},
             ]
         }
+
+    def _use_ml_models(self):
+        np.random.seed(42)
+        X = np.array([[1, 2], [3, 4], [5, 6]])
+        y = np.array([1, 2, 3])
+        model = RandomForestRegressor(n_estimators=10)
+        model.fit(X, y)
+        return model.predict([[7, 8]])
 
     def get_current_month(self):
         return datetime.now().month
