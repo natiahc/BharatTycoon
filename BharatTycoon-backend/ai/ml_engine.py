@@ -26,13 +26,19 @@ except ImportError:
     SEMANTIC_SEARCH_AVAILABLE = False
     print("⚠️ sentence-transformers not installed. Run: pip install sentence-transformers")
 
-try:
-    from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification
-    import torch
-    TRANSFORMERS_AVAILABLE = True
-except ImportError:
-    TRANSFORMERS_AVAILABLE = False
-    print("⚠️ transformers not installed. Run: pip install transformers torch")
+TRANSFORMERS_AVAILABLE = None  # Will be set lazily
+
+def _check_transformers():
+    global TRANSFORMERS_AVAILABLE
+    if TRANSFORMERS_AVAILABLE is None:
+        try:
+            from transformers import pipeline
+            import torch
+            TRANSFORMERS_AVAILABLE = True
+        except ImportError:
+            TRANSFORMERS_AVAILABLE = False
+            print("⚠️ transformers not installed. Run: pip install transformers torch")
+    return TRANSFORMERS_AVAILABLE
 
 from ai.live_trends import INDIAN_STATES_DATA
 
@@ -161,11 +167,14 @@ class NewsIntelligenceEngine:
         if self._is_initialized:
             return True
             
-        if not TRANSFORMERS_AVAILABLE:
+        if not _check_transformers():
             print("⚠️ News intelligence disabled - transformers not available")
             return False
             
         try:
+            from transformers import pipeline
+            import torch
+            
             print("🔄 Loading HuggingFace models for news analysis...")
             
             # Sentiment analysis - multi-language for Indian context
