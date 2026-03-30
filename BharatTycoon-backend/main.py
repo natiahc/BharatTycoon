@@ -3,11 +3,6 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List
-from ai.unified_engine import UnifiedRecommendationEngine
-from ai.unified_simulation import MultiFactorSimulator
-from ai.unified_risk import MultiFactorRiskAnalyzer
-from ai.unified_advisor import MultiFactorAdvisor
-from ai.ml_engine import ml_engine
 
 app = FastAPI(title="BharatTycoon AI API - Powered by HuggingFace Transformers")
 
@@ -19,9 +14,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-recommendation_engine = UnifiedRecommendationEngine()
-risk_analyzer = MultiFactorRiskAnalyzer()
-advisor = MultiFactorAdvisor()
+# Lazy import to avoid blocking startup
+recommendation_engine = None
+risk_analyzer = None
+advisor = None
+ml_engine_instance = None
+
+def get_recommendation_engine():
+    global recommendation_engine
+    if recommendation_engine is None:
+        from ai.unified_engine import UnifiedRecommendationEngine
+        recommendation_engine = UnifiedRecommendationEngine()
+    return recommendation_engine
+
+def get_risk_analyzer():
+    global risk_analyzer
+    if risk_analyzer is None:
+        from ai.unified_risk import MultiFactorRiskAnalyzer
+        risk_analyzer = MultiFactorRiskAnalyzer()
+    return risk_analyzer
+
+def get_advisor():
+    global advisor
+    if advisor is None:
+        from ai.unified_advisor import MultiFactorAdvisor
+        advisor = MultiFactorAdvisor()
+    return advisor
+
+def get_ml_engine():
+    global ml_engine_instance
+    if ml_engine_instance is None:
+        from ai.ml_engine import BharatTycoonMLEngine
+        ml_engine_instance = BharatTycoonMLEngine()
+    return ml_engine_instance
 
 class UserFactors(BaseModel):
     capital: float
@@ -127,7 +152,7 @@ def search_locations(q: str):
 @app.get("/india/cities")
 def get_all_cities():
     """Get all cities"""
-    engine = UnifiedRecommendationEngine()
+    engine = get_recommendation_engine()
     return {
         "cities": [
             {
@@ -159,7 +184,7 @@ def get_economic_indicators():
 
 @app.post("/unified/recommendations")
 def get_recommendations(request: UnifiedRequest):
-    result = recommendation_engine.generate_dynamic_recommendations(
+    result = get_recommendation_engine().generate_dynamic_recommendations(
         capital=request.user.capital,
         risk_appetite=request.user.risk_appetite,
         city=request.city.city,
@@ -169,7 +194,7 @@ def get_recommendations(request: UnifiedRequest):
 
 @app.post("/unified/simulate")
 def run_simulation(request: SimulationRequest):
-    result = recommendation_engine.simulate_journey(
+    result = get_recommendation_engine().simulate_journey(
         request.user.dict(),
         request.city.dict(),
         request.initial_cash,
@@ -180,7 +205,7 @@ def run_simulation(request: SimulationRequest):
 
 @app.post("/unified/risk")
 def analyze_risk(request: RiskRequest):
-    result = risk_analyzer.analyze(
+    result = get_risk_analyzer().analyze(
         request.user.dict(),
         request.city.dict(),
         request.business.dict(),
@@ -189,8 +214,8 @@ def analyze_risk(request: RiskRequest):
     return result
 
 @app.post("/unified/advisor")
-def get_advisor(request: AdvisorRequest):
-    result = advisor.get_recommendations(
+def get_advisor_advice(request: AdvisorRequest):
+    result = get_advisor().get_recommendations(
         request.user.dict(),
         request.city.dict(),
         request.current_state
@@ -256,7 +281,7 @@ def get_feedback():
 @app.get("/ml/status")
 def get_ml_status():
     """Get status of all ML models"""
-    status = ml_engine.get_status()
+    status = get_ml_engine().get_status()
     return {
         "ml_engine": "BharatTycoon ML Engine",
         "powered_by": "HuggingFace Transformers",
@@ -268,7 +293,7 @@ def get_ml_status():
 @app.get("/ml/initialize")
 def initialize_ml_models():
     """Initialize all ML models (loads them into memory)"""
-    results = ml_engine.initialize_all()
+    results = get_ml_engine().initialize_all()
     return {
         "initialized": results,
         "total_models": len(results),
@@ -283,7 +308,7 @@ def ml_smart_search(q: str, top_k: int = 5):
     Semantic search using sentence-transformers.
     Example: "delhi cafe" will find Delhi restaurants
     """
-    results = ml_engine.smart_search(q, top_k)
+    results = get_ml_engine().smart_search(q, top_k)
     return {
         "query": results['query'],
         "search_type": results['type'],
@@ -299,13 +324,13 @@ def ml_analyze_news(news: List[str]):
     AI-powered news analysis using multiple HuggingFace models.
     - Sentiment Analysis (nlptown/bert-base-multilingual-uncased-sentiment)
     - Named Entity Recognition (dslim/bert-base-NER)
-    - Summarization (sshleifer/distilbart-cnn-12-6)
+    - Text Summarization (sshleifer/distilbart-cnn-12-6)
     - Zero-shot Classification (facebook/bart-large-mnli)
     """
     if not news:
         raise HTTPException(status_code=400, detail="No news articles provided")
     
-    results = ml_engine.news_intelligence.analyze_news_article(news[0])
+    results = get_ml_engine().news_intelligence.analyze_news_article(news[0])
     
     return {
         "total_articles": len(news),
@@ -324,7 +349,7 @@ def ml_analyze_city_news(city: str, news: List[str]):
     """
     Full AI analysis of city news including trend detection.
     """
-    results = ml_engine.analyze_city_news(city, news)
+    results = get_ml_engine().analyze_city_news(city, news)
     return results
 
 
@@ -334,7 +359,7 @@ def ml_city_similarity(city: str):
     Get embedding-based similarity between cities.
     Uses sentence-transformers to find semantically similar cities.
     """
-    viz_data = ml_engine.get_embedding_viz(city)
+    viz_data = get_ml_engine().get_embedding_viz(city)
     return viz_data
 
 
@@ -343,7 +368,7 @@ def ml_sentiment(text: str):
     """
     Analyze sentiment of text using BERT-based model.
     """
-    result = ml_engine.news_intelligence.analyze_sentiment(text)
+    result = get_ml_engine().news_intelligence.analyze_sentiment(text)
     return {
         "text": text[:200],
         "sentiment": result,
@@ -356,7 +381,7 @@ def ml_entities(text: str):
     """
     Extract named entities using BERT NER.
     """
-    result = ml_engine.news_intelligence.extract_entities(text)
+    result = get_ml_engine().news_intelligence.extract_entities(text)
     return {
         "text": text[:200],
         "entities": result,
@@ -369,7 +394,7 @@ def ml_summarize(text: str, max_length: int = 50):
     """
     Summarize text using DistilBART.
     """
-    result = ml_engine.news_intelligence.summarize_text(text, max_length)
+    result = get_ml_engine().news_intelligence.summarize_text(text, max_length)
     return {
         "original_text": text[:500],
         "summary": result,
@@ -382,7 +407,7 @@ def ml_classify(text: str):
     """
     Zero-shot classify text into business categories.
     """
-    result = ml_engine.news_intelligence.classify_business_category(text)
+    result = get_ml_engine().news_intelligence.classify_business_category(text)
     return {
         "text": text[:200],
         "classification": result,
@@ -399,7 +424,7 @@ def ml_detect_trends(news: List[dict]):
     if not articles:
         raise HTTPException(status_code=400, detail="No news titles provided")
     
-    trend_results = ml_engine.trend_detector.analyze_trends([{'title': t} for t in articles])
+    trend_results = get_ml_engine().trend_detector.analyze_trends([{'title': t} for t in articles])
     return {
         "articles_analyzed": len(articles),
         "trends": trend_results
