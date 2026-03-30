@@ -415,6 +415,26 @@ def ml_classify(text: str):
     }
 
 
+@app.get("/ml/text-generation")
+def ml_text_generation(prompt: str):
+    """
+    Generate text using GPT-2 for business advice and recommendations.
+    """
+    try:
+        result = get_ml_engine().text_generation.generate_business_advice(prompt)
+        return {
+            "prompt": prompt,
+            "generated_text": result.get("generated_text", "AI generation unavailable"),
+            "model": "gpt2"
+        }
+    except Exception as e:
+        return {
+            "prompt": prompt,
+            "generated_text": f"Focus on customer satisfaction and sustainable growth.",
+            "model": "fallback"
+        }
+
+
 # ============================================
 # FINANCIAL SYSTEM ENDPOINTS
 # ============================================

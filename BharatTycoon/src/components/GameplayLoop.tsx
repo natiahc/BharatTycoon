@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile, GameState } from '../App';
 import { GameEngine } from '../utils/gameEngine';
-import { getAvailableCards, DecisionCard } from '../utils/decisionCards';
+import { getBusinessCards, DecisionCard } from '../utils/decisionCards';
 import { generateDashboard, DashboardMetrics } from '../utils/businessIntelligenceDashboard';
 import { getJourneyMetrics } from '../utils/startupJourneySimulator';
+import api from '../utils/api';
 
 interface Props {
   user: UserProfile;
@@ -12,32 +13,62 @@ interface Props {
 }
 
 export const GameplayLoop: React.FC<Props> = ({ user, gameState, setGameState }) => {
+  const businessType = user.interests[0]?.toLowerCase() || 'restaurant';
+  const cityTier = gameState?.cityTier || 1;
+  
   const [engine] = useState(() => new GameEngine(user.uiLevel, user.capital));
   const [currentState, setCurrentState] = useState(engine.getState());
   const [availableCards, setAvailableCards] = useState<DecisionCard[]>([]);
   const [dashboard, setDashboard] = useState<DashboardMetrics | null>(null);
   const [showEvent, setShowEvent] = useState(false);
   const [eventMessage, setEventMessage] = useState('');
+  const [aiRecommendation, setAiRecommendation] = useState<string | null>(null);
 
   useEffect(() => {
-    const cards = getAvailableCards(currentState.phase, currentState.cash, currentState.month);
-    setAvailableCards(cards.slice(0, 3));
+    const cards = getBusinessCards(businessType, cityTier, currentState.phase, currentState.cash, currentState.month);
+    const shuffled = cards.sort(() => Math.random() - 0.5);
+    setAvailableCards(shuffled.slice(0, 6));
     
     const dash = generateDashboard(
-      { month: currentState.month, revenue: currentState.revenue, costs: currentState.costs, cash: currentState.cash, businessType: user.interests[0] || 'service' },
+      { month: currentState.month, revenue: currentState.revenue, costs: currentState.costs, cash: currentState.cash, businessType },
       { city: user.city, capital: user.capital, riskAppetite: user.riskAppetite }
     );
     setDashboard(dash);
-  }, [currentState.month]);
+    
+    // Get AI recommendation
+    fetchAiRecommendation(cards, currentState);
+  }, [currentState.month, businessType, cityTier]);
 
-  const handleDecision = (cardId: string) => {
-    const result = engine.makeDecision(cardId, { city: user.city, businessType: user.interests[0] || 'service', riskAppetite: user.riskAppetite });
+  const fetchAiRecommendation = async (cards: DecisionCard[], state: typeof currentState) => {
+    try {
+      const prompt = `I'm running a ${businessType} business in a Tier ${cityTier} city with ₹${state.cash.toLocaleString()} cash, making ₹${state.revenue.toLocaleString()}/month revenue. Given these options: ${cards.map(c => c.title).join(', ')}. Which should I prioritize for maximum growth?`;
+      const response = await api.ml.textGeneration(prompt);
+      if (response?.generated_text) {
+        setAiRecommendation(response.generated_text.slice(0, 150) + '...');
+      }
+    } catch {
+      // Silently fail - AI is optional
+    }
+  };
+
+  const handleDecision = (card: DecisionCard) => {
+    // Check if can afford
+    if (currentState.cash < card.cost) {
+      setEventMessage(`Not enough cash! Need ₹${card.cost.toLocaleString()}`);
+      setShowEvent(true);
+      setTimeout(() => setShowEvent(false), 2000);
+      return;
+    }
+    
+    const result = engine.makeDecision(card.id, { city: user.city, businessType, riskAppetite: user.riskAppetite });
     setCurrentState(result.newState);
     
-    if (result.impact.revenue > 0) {
-      setEventMessage(`+₹${result.impact.revenue.toLocaleString()} revenue!`);
-    } else if (result.impact.cash < 0) {
-      setEventMessage(`-₹${Math.abs(result.impact.cash).toLocaleString()} cash used`);
+    if (card.cost > 0) {
+      setEventMessage(`Invested ₹${card.cost.toLocaleString()} in ${card.title}`);
+    } else if (card.monthlyCost > 0) {
+      setEventMessage(`Hired ${card.title} - ₹${card.monthlyCost.toLocaleString()}/month`);
+    } else {
+      setEventMessage(`Started ${card.title}`);
     }
     setShowEvent(true);
     setTimeout(() => setShowEvent(false), 2000);
@@ -113,19 +144,32 @@ export const GameplayLoop: React.FC<Props> = ({ user, gameState, setGameState })
 
       <div style={styles.main}>
         <div style={styles.cardsSection}>
-          <h2 style={styles.sectionTitle}>Make a Decision</h2>
+          <h2 style={styles.sectionTitle}>Make a Decision - {businessType.charAt(0).toUpperCase() + businessType.slice(1)}</h2>
+          
+          {aiRecommendation && (
+            <div style={{background: '#e0f2fe', padding: '12px', borderRadius: '8px', marginBottom: '16px', fontSize: '14px'}}>
+              <strong>🤖 AI Advisor:</strong> {aiRecommendation}
+            </div>
+          )}
+          
           <div style={styles.cards}>
             {availableCards.map(card => (
               <div key={card.id} style={styles.card}>
+                <span style={{fontSize: '11px', color: '#666', textTransform: 'uppercase'}}>{card.category}</span>
                 <h3 style={styles.cardTitle}>{card.title}</h3>
                 <p style={styles.cardDesc}>{card.description}</p>
                 <div style={styles.cardImpact}>
-                  <span>💰 {card.impact.revenue}</span>
-                  <span>📉 {card.impact.costs}</span>
-                  <span>⚡ {card.impact.timeline}</span>
+                  <span style={{color: '#22c55e'}}>📈 {card.impact.revenue}</span>
+                  <span style={{color: card.cost > 0 ? '#ef4444' : '#666'}}>
+                    {card.cost > 0 ? `💸 ₹${card.cost.toLocaleString()}` : card.monthlyCost > 0 ? `📅 ₹${card.monthlyCost.toLocaleString()}/mo` : '✅ Free'}
+                  </span>
                 </div>
-                <button style={styles.cardButton} onClick={() => handleDecision(card.id)}>
-                  Take Action
+                <button 
+                  style={{...styles.cardButton, opacity: currentState.cash < card.cost ? 0.5 : 1}} 
+                  onClick={() => handleDecision(card)}
+                  disabled={currentState.cash < card.cost}
+                >
+                  {currentState.cash < card.cost ? 'Need More Cash' : 'Take Action'}
                 </button>
               </div>
             ))}

@@ -8,6 +8,16 @@ import { MLFeaturesPanel } from './components/MLFeaturesPanel';
 import { BusinessSimulation } from './components/BusinessSimulation';
 import { api } from './utils/api';
 
+const TIER1_CITIES = ['mumbai', 'delhi', 'bangalore', 'chennai', 'kolkata', 'hyderabad', 'pune', 'ahmedabad'];
+const TIER2_CITIES = ['jaipur', 'lucknow', 'chandigarh', 'indore', 'bhubaneswar', 'raipur', 'dehradun', 'nagpur', 'visakhapatnam', 'coimbatore', 'kochi', 'surat'];
+
+function getCityTier(city: string): number {
+  const cityLower = city.toLowerCase();
+  if (TIER1_CITIES.some(c => cityLower.includes(c))) return 1;
+  if (TIER2_CITIES.some(c => cityLower.includes(c))) return 2;
+  return 3;
+}
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -30,6 +40,7 @@ export interface GameState {
   businessType: string;
   businessName: string;
   phase: 'founder' | 'seed' | 'growth' | 'scale';
+  cityTier: number;
 }
 
 const App: React.FC = () => {
@@ -49,7 +60,8 @@ const App: React.FC = () => {
       profit: Math.round(profile.capital * 0.25) - initialCosts,
       businessType: profile.interests[0] || 'service',
       businessName: profile.interests[0] || 'service',
-      phase: 'founder'
+      phase: 'founder',
+      cityTier: getCityTier(profile.city)
     };
     setGameState(initialState);
     setShowTutorial(false);
@@ -88,7 +100,8 @@ const App: React.FC = () => {
       profit: Math.round(user.capital * 0.25) - initialCosts,
       businessType: user.interests[0] || 'service',
       businessName: user.interests[0] || 'service',
-      phase: 'founder'
+      phase: 'founder',
+      cityTier: getCityTier(user.city)
     };
     setGameState(initialState);
   };

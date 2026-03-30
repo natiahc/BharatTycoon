@@ -19,7 +19,8 @@ export const GuidedGame: React.FC<Props> = ({ user, gameState, setGameState }) =
   const phase = getPhaseForMonth(gameState.month);
 
   useEffect(() => {
-    const newCards = getRandomCards(3, phase, gameState.cash, gameState.month);
+    const businessType = gameState.businessType || 'restaurant';
+    const newCards = getRandomCards(businessType, gameState.cityTier, 3, phase, gameState.cash, gameState.month);
     setCards(newCards);
   }, [gameState.month]);
 

@@ -154,6 +154,7 @@ export const api = {
     summarize: (text: string, maxLength = 50) =>
       fetchAPI(`/ml/summarize?text=${encodeURIComponent(text)}&max_length=${maxLength}`),
     classify: (text: string) => fetchAPI(`/ml/classify?text=${encodeURIComponent(text)}`),
+    textGeneration: (prompt: string) => fetchAPI(`/ml/text-generation?prompt=${encodeURIComponent(prompt)}`),
   },
 
   ai: {
