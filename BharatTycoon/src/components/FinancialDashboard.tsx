@@ -115,27 +115,27 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ business
           <div className="metric-cards">
             <div className="metric">
               <label>Total Revenue</label>
-              <value>{formatCurrency(annual.total_revenue || 0)}</value>
+              <span className="metric-value">{formatCurrency(annual.total_revenue || 0)}</span>
             </div>
             <div className="metric">
               <label>Total Expenses</label>
-              <value>{formatCurrency(annual.total_expenses || 0)}</value>
+              <span className="metric-value">{formatCurrency(annual.total_expenses || 0)}</span>
             </div>
             <div className="metric profit">
               <label>Net Profit</label>
-              <value>{formatCurrency(annual.total_profit || 0)}</value>
+              <span className="metric-value">{formatCurrency(annual.total_profit || 0)}</span>
             </div>
             <div className="metric">
               <label>ROI</label>
-              <value>{formatPercent(annual.roi || 0)}</value>
+              <span className="metric-value">{formatPercent(annual.roi || 0)}</span>
             </div>
             <div className="metric">
               <label>Net Worth</label>
-              <value>{formatCurrency(annual.final_net_worth || 0)}</value>
+              <span className="metric-value">{formatCurrency(annual.final_net_worth || 0)}</span>
             </div>
             <div className="metric">
               <label>Cash on Hand</label>
-              <value>{formatCurrency(annual.final_cash || 0)}</value>
+              <span className="metric-value">{formatCurrency(annual.final_cash || 0)}</span>
             </div>
           </div>
         </div>
