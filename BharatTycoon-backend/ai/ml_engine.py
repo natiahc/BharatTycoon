@@ -587,6 +587,221 @@ class TrendDetector:
         return insights[:5]
 
 
+class TextGenerationEngine:
+    """
+    AI text generation using HuggingFace Inference API.
+    For business advice, marketing copy, and content generation.
+    """
+    
+    def __init__(self):
+        self._client = None
+        self._is_initialized = False
+    
+    def initialize(self):
+        if self._is_initialized:
+            return True
+        try:
+            from huggingface_hub import InferenceClient
+            self._client = InferenceClient(token=os.environ.get('HF_TOKEN'))
+            self._is_initialized = True
+            return True
+        except:
+            return False
+    
+    def generate_business_advice(self, context: str, max_length: int = 150) -> Dict[str, Any]:
+        """Generate AI-powered business advice"""
+        if not self.initialize():
+            return {'advice': 'AI unavailable', 'model': 'fallback'}
+        
+        prompt = f"""As a business advisor for Indian entrepreneurs, give advice for: {context}
+        
+Advice:"""
+        
+        try:
+            result = self._client.text_generation(
+                prompt,
+                model="gpt2",  # Free, fast model
+                max_new_tokens=max_length,
+                temperature=0.7
+            )
+            return {
+                'advice': result.replace(prompt, '').strip(),
+                'context': context,
+                'model': 'gpt2'
+            }
+        except Exception as e:
+            return {'advice': 'AI unavailable', 'error': str(e)}
+    
+    def generate_marketing_copy(self, product: str, tone: str = "professional") -> Dict[str, Any]:
+        """Generate marketing copy for a business/product"""
+        if not self.initialize():
+            return {'copy': 'AI unavailable', 'model': 'fallback'}
+        
+        prompt = f"""Write a {tone} marketing tagline and description for: {product}
+
+Tagline:"""
+        
+        try:
+            result = self._client.text_generation(
+                prompt,
+                model="gpt2",
+                max_new_tokens=100,
+                temperature=0.8
+            )
+            return {
+                'tagline': result.split('\n')[0] if '\n' in result else result[:100],
+                'description': result.replace(prompt, '').strip(),
+                'tone': tone,
+                'model': 'gpt2'
+            }
+        except Exception as e:
+            return {'copy': 'AI unavailable', 'error': str(e)}
+    
+    def generate_business_name(self, business_type: str, keywords: List[str] = None) -> Dict[str, Any]:
+        """Generate creative business names"""
+        if not self.initialize():
+            return {'names': ['Business Name AI unavailable'], 'model': 'fallback'}
+        
+        kw_str = ', '.join(keywords) if keywords else 'modern'
+        prompt = f"""Generate 5 creative Indian business names for a {business_type} with {kw_str} vibes.
+
+1."""
+        
+        try:
+            result = self._client.text_generation(
+                prompt,
+                model="gpt2",
+                max_new_tokens=80,
+                temperature=0.9
+            )
+            names = [n.strip() for n in result.split('\n') if n.strip() and len(n.strip()) > 3][:5]
+            if not names:
+                names = [result.replace(prompt, '').strip().split('.')[0][:50]]
+            return {
+                'names': names,
+                'business_type': business_type,
+                'model': 'gpt2'
+            }
+        except Exception as e:
+            return {'names': [], 'error': str(e)}
+
+
+class TranslationEngine:
+    """
+    Multi-language translation using HuggingFace.
+    Support for Hindi, regional Indian languages.
+    """
+    
+    LANGUAGES = {
+        'en': 'English', 'hi': 'Hindi', 'bn': 'Bengali', 'ta': 'Tamil',
+        'te': 'Telugu', 'mr': 'Marathi', 'gu': 'Gujarati', 'kn': 'Kannada',
+        'ml': 'Malayalam', 'pa': 'Punjabi'
+    }
+    
+    def __init__(self):
+        self._client = None
+        self._is_initialized = False
+    
+    def initialize(self):
+        if self._is_initialized:
+            return True
+        try:
+            from huggingface_hub import InferenceClient
+            self._client = InferenceClient(token=os.environ.get('HF_TOKEN'))
+            self._is_initialized = True
+            return True
+        except:
+            return False
+    
+    def translate_to_hindi(self, text: str) -> Dict[str, Any]:
+        """Translate English text to Hindi"""
+        return self.translate(text, 'en', 'hi')
+    
+    def translate(self, text: str, source: str = 'en', target: str = 'hi') -> Dict[str, Any]:
+        """Translate between supported languages"""
+        if not self.initialize():
+            return {'original': text[:100], 'translated': 'AI unavailable'}
+        
+        if source == 'en' and target == 'hi':
+            model = "Helsinki-NLP/opus-mt-en-hi"
+        elif source == 'hi' and target == 'en':
+            model = "Helsinki-NLP/opus-mt-hi-en"
+        else:
+            model = "facebook/mbart-large-50-many-to-many-mmt"
+        
+        try:
+            result = self._client.translation(
+                text=text[:500],
+                model=model
+            )
+            return {
+                'original': text[:200],
+                'translated': result['translation_text'],
+                'source': source,
+                'target': target,
+                'model': model
+            }
+        except Exception as e:
+            return {'original': text[:100], 'translated': 'Translation unavailable', 'error': str(e)}
+
+
+class QAEngine:
+    """
+    Question Answering using HuggingFace for FAQ and business queries.
+    """
+    
+    def __init__(self):
+        self._client = None
+        self._is_initialized = False
+        self._context_cache = {}
+    
+    def initialize(self):
+        if self._is_initialized:
+            return True
+        try:
+            from huggingface_hub import InferenceClient
+            self._client = InferenceClient(token=os.environ.get('HF_TOKEN'))
+            self._is_initialized = True
+            self._load_business_context()
+            return True
+        except:
+            return False
+    
+    def _load_business_context(self):
+        """Load business-related context for QA"""
+        self._context_cache = {
+            'restaurant': "Restaurants in India typically have profit margins of 6-10%. Key success factors include location, food quality, hygiene, and customer service. Average initial investment ranges from 5-50 lakhs depending on scale.",
+            'retail': "Retail businesses in India have profit margins of 10-25%. Success depends on inventory management, location, and pricing strategy. E-commerce competition has impacted traditional retail.",
+            'tech': "Tech startups can have profit margins of 20-40% once established. Key costs are talent acquisition and infrastructure. Government schemes like Startup India provide benefits.",
+            'salon': "Beauty salons typically achieve 15-30% profit margins. Success factors include skilled staff, quality products, and customer experience. Initial investment ranges from 2-10 lakhs.",
+            'tuition': "Education and tuition centers have stable margins of 30-50%. Success depends on faculty quality and results. Growing demand for competitive exam coaching.",
+            'manufacturing': "Manufacturing businesses have lower margins (10-15%) but higher volumes. Success factors include supply chain, quality control, and regulatory compliance."
+        }
+    
+    def answer_question(self, question: str, topic: str = None) -> Dict[str, Any]:
+        """Answer business-related questions"""
+        if not self.initialize():
+            return {'answer': 'AI unavailable', 'confidence': 0}
+        
+        context = self._context_cache.get(topic.lower() if topic else '', 
+            "Indian business landscape varies by sector. Key factors for success include market research, financial planning, location, and execution.")
+        
+        try:
+            result = self._client.question_answering(
+                question=question[:200],
+                context=context[:500]
+            )
+            return {
+                'question': question,
+                'answer': result['answer'],
+                'confidence': round(result['score'], 3),
+                'topic': topic,
+                'model': 'deepset/roberta-base-squad2'
+            }
+        except Exception as e:
+            return {'question': question, 'answer': 'AI unavailable', 'error': str(e)}
+
+
 class BharatTycoonMLEngine:
     """
     Main ML Engine combining all HuggingFace capabilities.
@@ -598,13 +813,19 @@ class BharatTycoonMLEngine:
         self.news_intelligence = NewsIntelligenceEngine()
         self.embedding_viz = EmbeddingVisualizer(self.semantic_search)
         self.trend_detector = TrendDetector(self.news_intelligence)
+        self.text_generation = TextGenerationEngine()
+        self.translation = TranslationEngine()
+        self.qa = QAEngine()
         self._initialized = False
         
     def initialize_all(self) -> Dict[str, bool]:
         """Initialize all ML models"""
         results = {
             'semantic_search': self.semantic_search.initialize(),
-            'news_intelligence': self.news_intelligence.initialize()
+            'news_intelligence': self.news_intelligence.initialize(),
+            'text_generation': self.text_generation.initialize(),
+            'translation': self.translation.initialize(),
+            'qa': self.qa.initialize()
         }
         self._initialized = all(results.values())
         return results
@@ -615,7 +836,8 @@ class BharatTycoonMLEngine:
             'initialized': self._initialized,
             'semantic_search': {
                 'available': SEMANTIC_SEARCH_AVAILABLE,
-                'loaded': self.semantic_search._is_initialized
+                'loaded': self.semantic_search._is_initialized,
+                'model': 'sentence-transformers/all-MiniLM-L6-v2'
             },
             'news_intelligence': {
                 'available': TRANSFORMERS_AVAILABLE,
@@ -627,10 +849,20 @@ class BharatTycoonMLEngine:
                     'classification': 'facebook/bart-large-mnli'
                 }
             },
-            'python_version': {
-                'transformers': TRANSFORMERS_AVAILABLE,
-                'sentence_transformers': SEMANTIC_SEARCH_AVAILABLE,
-                'torch': 'torch' in dir() if 'torch' in globals() else False
+            'text_generation': {
+                'available': True,
+                'model': 'gpt2',
+                'uses': ['business_advice', 'marketing_copy', 'business_names']
+            },
+            'translation': {
+                'available': True,
+                'languages': TranslationEngine.LANGUAGES,
+                'model': 'Helsinki-NLP/opus-mt-en-hi'
+            },
+            'qa': {
+                'available': True,
+                'model': 'deepset/roberta-base-squad2',
+                'topics': list(self.qa._context_cache.keys())
             }
         }
     

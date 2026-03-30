@@ -577,6 +577,140 @@ def get_profit_loss(data: dict):
 
 
 # ============================================
+# AI TEXT GENERATION ENDPOINTS
+# ============================================
+
+@app.get("/ai/generate-advice")
+def ai_generate_advice(context: str):
+    """
+    Generate AI-powered business advice using GPT-2.
+    Example: "starting a restaurant in Mumbai" or "franchise opportunity"
+    """
+    result = get_ml_engine().text_generation.generate_business_advice(context)
+    return {
+        "context": context,
+        "advice": result.get('advice', 'AI unavailable'),
+        "model": result.get('model', 'unknown')
+    }
+
+
+@app.get("/ai/marketing-copy")
+def ai_marketing_copy(product: str, tone: str = "professional"):
+    """
+    Generate marketing copy using AI.
+    Tone options: professional, friendly, urgent, premium
+    """
+    result = get_ml_engine().text_generation.generate_marketing_copy(product, tone)
+    return {
+        "product": product,
+        "tone": tone,
+        "tagline": result.get('tagline', 'AI unavailable'),
+        "description": result.get('description', ''),
+        "model": result.get('model', 'unknown')
+    }
+
+
+@app.get("/ai/business-names")
+def ai_business_names(business_type: str, keywords: str = ""):
+    """
+    Generate creative business names using AI.
+    Example: business_type="restaurant", keywords="modern,authentic"
+    """
+    kw_list = [k.strip() for k in keywords.split(',')] if keywords else None
+    result = get_ml_engine().text_generation.generate_business_name(business_type, kw_list)
+    return {
+        "business_type": business_type,
+        "keywords": kw_list,
+        "suggested_names": result.get('names', []),
+        "model": result.get('model', 'unknown')
+    }
+
+
+# ============================================
+# AI TRANSLATION ENDPOINTS
+# ============================================
+
+@app.get("/ai/translate")
+def ai_translate(text: str, target: str = "hi"):
+    """
+    Translate text to Hindi or other languages.
+    Supported: hi (Hindi), bn (Bengali), ta (Tamil), te (Telugu), mr (Marathi)
+    """
+    lang_map = {"hi": "Hindi", "bn": "Bengali", "ta": "Tamil", "te": "Telugu", 
+                "mr": "Marathi", "gu": "Gujarati", "kn": "Kannada"}
+    result = get_ml_engine().translation.translate(text, 'en', target)
+    return {
+        "original": result.get('original', text),
+        "translated": result.get('translated', 'AI unavailable'),
+        "target_language": lang_map.get(target, target),
+        "model": result.get('model', 'unknown')
+    }
+
+
+@app.get("/ai/translate-to-hindi")
+def ai_translate_hindi(text: str):
+    """Quick endpoint to translate English to Hindi"""
+    result = get_ml_engine().translation.translate_to_hindi(text)
+    return {
+        "original": result.get('original', text),
+        "hindi": result.get('translated', 'AI unavailable'),
+        "model": result.get('model', 'unknown')
+    }
+
+
+@app.get("/ai/languages")
+def ai_supported_languages():
+    """Get list of supported translation languages"""
+    from ai.ml_engine import TranslationEngine
+    return {
+        "languages": TranslationEngine.LANGUAGES
+    }
+
+
+# ============================================
+# AI Q&A ENDPOINTS
+# ============================================
+
+@app.get("/ai/answer-question")
+def ai_answer_question(question: str, topic: str = ""):
+    """
+    Get AI answers to business-related questions.
+    Topics: restaurant, retail, tech, salon, tuition, manufacturing
+    """
+    result = get_ml_engine().qa.answer_question(question, topic or None)
+    return {
+        "question": result.get('question', question),
+        "answer": result.get('answer', 'AI unavailable'),
+        "confidence": result.get('confidence', 0),
+        "topic": result.get('topic', topic),
+        "model": result.get('model', 'unknown')
+    }
+
+
+@app.get("/ai/business-faq")
+def ai_business_faq(topic: str):
+    """
+    Get pre-loaded FAQ answers for business topics.
+    """
+    engine = get_ml_engine()
+    if not engine.qa.initialize():
+        return {"error": "AI unavailable"}
+    
+    context = engine.qa._context_cache.get(topic.lower(), 
+        "Topic not available. Try: restaurant, retail, tech, salon, tuition, manufacturing")
+    
+    return {
+        "topic": topic,
+        "context": context,
+        "questions_to_ask": [
+            f"What are the profit margins for {topic}?",
+            f"How much to invest in {topic}?",
+            f"What are the risks of {topic} business?"
+        ]
+    }
+
+
+# ============================================
 # ML TRENDS ENDPOINT
 # ============================================
 
