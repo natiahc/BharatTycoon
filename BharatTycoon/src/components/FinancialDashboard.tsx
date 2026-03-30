@@ -149,7 +149,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ business
               {Object.entries(balance.assets || {}).map(([key, value]) => (
                 <li key={key}>
                   <span>{key.replace(/_/g, ' ')}</span>
-                  <span>{formatCurrency(value)}</span>
+                  <span>{formatCurrency(value as number)}</span>
                 </li>
               ))}
             </ul>
@@ -160,7 +160,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ business
               {Object.entries(balance.liabilities || {}).map(([key, value]) => (
                 <li key={key}>
                   <span>{key.replace(/_/g, ' ')}</span>
-                  <span>{formatCurrency(value)}</span>
+                  <span>{formatCurrency(value as number)}</span>
                 </li>
               ))}
             </ul>
@@ -169,7 +169,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ business
               {Object.entries(balance.equity || {}).map(([key, value]) => (
                 <li key={key}>
                   <span>{key.replace(/_/g, ' ')}</span>
-                  <span>{formatCurrency(value)}</span>
+                  <span>{formatCurrency(value as number)}</span>
                 </li>
               ))}
             </ul>
@@ -185,7 +185,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ business
               {Object.entries(ratios.liquidity || {}).map(([key, value]) => (
                 <li key={key}>
                   <span>{key.replace(/_/g, ' ')}</span>
-                  <span>{typeof value === 'number' ? value.toFixed(2) : value}</span>
+                  <span>{typeof value === 'number' ? (value as number).toFixed(2) : String(value)}</span>
                 </li>
               ))}
             </ul>
@@ -196,7 +196,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ business
               {Object.entries(ratios.profitability || {}).map(([key, value]) => (
                 <li key={key}>
                   <span>{key.replace(/_/g, ' ')}</span>
-                  <span>{typeof value === 'number' ? formatPercent(value) : value}</span>
+                  <span>{typeof value === 'number' ? formatPercent(value as number) : String(value)}</span>
                 </li>
               ))}
             </ul>
@@ -207,7 +207,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ business
               {Object.entries(ratios.leverage || {}).map(([key, value]) => (
                 <li key={key}>
                   <span>{key.replace(/_/g, ' ')}</span>
-                  <span>{typeof value === 'number' ? value.toFixed(2) : value}</span>
+                  <span>{typeof value === 'number' ? (value as number).toFixed(2) : String(value)}</span>
                 </li>
               ))}
             </ul>
@@ -218,7 +218,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ business
               {Object.entries(ratios.efficiency || {}).map(([key, value]) => (
                 <li key={key}>
                   <span>{key.replace(/_/g, ' ')}</span>
-                  <span>{typeof value === 'number' ? value.toFixed(2) : value}</span>
+                  <span>{typeof value === 'number' ? (value as number).toFixed(2) : String(value)}</span>
                 </li>
               ))}
             </ul>
