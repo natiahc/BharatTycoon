@@ -177,7 +177,7 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ business_type: businessType, city_tier: cityTier, capital }),
       }),
-    executeAction: (businessType: string, cityTier: number, capital: number, actionId: string, actionType: string, amount: number, currentState: any) =>
+    executeAction: (businessType: string, cityTier: number, capital: number, actionId: string, currentState: any) =>
       fetchAPI('/business/execute', {
         method: 'POST',
         body: JSON.stringify({
@@ -185,8 +185,6 @@ export const api = {
           city_tier: cityTier,
           capital,
           action_id: actionId,
-          action_type: actionType,
-          amount,
           current_state: currentState
         }),
       }),

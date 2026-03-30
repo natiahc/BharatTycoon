@@ -129,14 +129,11 @@ export const BusinessSimulation: React.FC<BusinessSimulationProps> = ({
     setExecuting(action.id);
 
     try {
-      const amount = action.baseCost * quantity;
       const result = await api.business.executeAction(
         businessType,
         cityTier,
         capital,
         action.id,
-        action.category === 'staff' ? 'hire' : action.category,
-        amount,
         internalState
       );
 
