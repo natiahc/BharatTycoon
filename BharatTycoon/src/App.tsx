@@ -5,6 +5,7 @@ import { GuidedGame } from './components/GuidedGame';
 import { TutorialScreen } from './components/TutorialScreen';
 import { FinancialDashboard } from './components/FinancialDashboard';
 import { MLFeaturesPanel } from './components/MLFeaturesPanel';
+import { BusinessSimulation } from './components/BusinessSimulation';
 import { api } from './utils/api';
 
 export interface UserProfile {
@@ -122,9 +123,14 @@ const App: React.FC = () => {
           </div>
         )}
         
-        <div className="expert-content">
+        <div className="expert-content expert-grid">
           <div className="left-panel">
             <GameplayLoop user={user} gameState={gameState} setGameState={setGameState} />
+            <BusinessSimulation 
+              businessType={gameState?.businessType || 'restaurant'}
+              cityTier={1}
+              capital={user.capital}
+            />
           </div>
           <div className="right-panel">
             <FinancialDashboard 
