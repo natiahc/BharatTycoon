@@ -3,6 +3,9 @@ import { OnboardingFlow } from './components/OnboardingFlow';
 import { GameplayLoop } from './components/GameplayLoop';
 import { GuidedGame } from './components/GuidedGame';
 import { TutorialScreen } from './components/TutorialScreen';
+import { FinancialDashboard } from './components/FinancialDashboard';
+import { MLFeaturesPanel } from './components/MLFeaturesPanel';
+import { api } from './utils/api';
 
 export interface UserProfile {
   id: string;
@@ -32,10 +35,10 @@ const App: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [showTutorial, setShowTutorial] = useState(false);
   const [gameState, setGameState] = useState<GameState | null>(null);
+  const [aiRecommendations, setAiRecommendations] = useState<any>(null);
 
-  const handleOnboardingComplete = (profile: UserProfile) => {
+  const handleOnboardingComplete = async (profile: UserProfile) => {
     setUser(profile);
-    // Skip tutorial for now, go directly to game
     const initialCosts = profile.capital * 0.15;
     const initialState: GameState = {
       month: 1,
@@ -49,6 +52,27 @@ const App: React.FC = () => {
     };
     setGameState(initialState);
     setShowTutorial(false);
+
+    try {
+      const userFactors = {
+        capital: profile.capital,
+        risk_appetite: profile.riskAppetite,
+        experience: profile.experience,
+        time_commitment: profile.timeCommitment,
+        interests: profile.interests
+      };
+      const cityFactors = {
+        city: profile.city,
+        business_type: profile.interests[0] || 'service',
+        purchasing_power: 0.7,
+        competition_level: 0.5,
+        seasonality: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+      };
+      const recommendations = await api.unified.recommend(userFactors, cityFactors);
+      setAiRecommendations(recommendations);
+    } catch (err) {
+      console.error('Failed to get AI recommendations:', err);
+    }
   };
 
   const handleTutorialComplete = () => {
@@ -78,6 +102,41 @@ const App: React.FC = () => {
 
   if (user.uiLevel === 'game') {
     return <GuidedGame user={user} gameState={gameState} setGameState={setGameState} />;
+  }
+
+  if (user.uiLevel === 'expert') {
+    return (
+      <div className="expert-view">
+        <header className="expert-header">
+          <h1>BharatTycoon AI Studio</h1>
+          <div className="user-info">
+            <span>{user.name}</span>
+            <span>₹{user.capital.toLocaleString()}</span>
+          </div>
+        </header>
+        
+        {aiRecommendations && (
+          <div className="ai-recommendations-banner">
+            <h3>AI Recommendations</h3>
+            <p>{aiRecommendations.recommendations?.[0]?.description || 'Loading...'}</p>
+          </div>
+        )}
+        
+        <div className="expert-content">
+          <div className="left-panel">
+            <GameplayLoop user={user} gameState={gameState} setGameState={setGameState} />
+          </div>
+          <div className="right-panel">
+            <FinancialDashboard 
+              businessType={gameState?.businessType || 'restaurant'}
+              cityTier={1}
+              capital={user.capital}
+            />
+            <MLFeaturesPanel />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return <GameplayLoop user={user} gameState={gameState} setGameState={setGameState} />;
