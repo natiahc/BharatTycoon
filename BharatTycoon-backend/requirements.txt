@@ -5,7 +5,8 @@ requests>=2.31.0
 scikit-learn>=1.6.1
 numpy>=2.2.3
 
-# HuggingFace ML Models
+# HuggingFace ML Models (Inference API - no local model downloads)
 transformers>=4.36.0
 torch>=2.0.0
 sentence-transformers>=2.2.2
+huggingface_hub>=0.19.0

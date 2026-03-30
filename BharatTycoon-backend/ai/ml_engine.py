@@ -148,132 +148,93 @@ class SemanticSearchEngine:
 
 class NewsIntelligenceEngine:
     """
-    AI-powered news analysis using HuggingFace transformers:
-    - Sentiment analysis (nlptown/bert-base-multilingual-uncased-sentiment)
-    - Named Entity Recognition (dslim/bert-base-NER)
-    - Text summarization (sshleifer/distilbart-cnn-12-6)
-    - Zero-shot classification (facebook/bart-large-mnli)
+    AI-powered news analysis using HuggingFace Inference API (cloud-hosted).
+    No model downloads needed - uses HuggingFace's free inference endpoints.
     """
     
+    HF_INFERENCE_API = "https://api-inference.huggingface.co/pipeline"
+    
     def __init__(self):
-        self.sentiment_analyzer = None
-        self.ner_tagger = None
-        self.summarizer = None
-        self.classifier = None
         self._is_initialized = False
+        self._client = None
         
     def initialize(self):
-        """Lazy load all models"""
+        """Initialize the inference client"""
         if self._is_initialized:
             return True
             
-        if not _check_transformers():
-            print("⚠️ News intelligence disabled - transformers not available")
-            return False
-            
         try:
-            from transformers import pipeline
-            import torch
-            
-            print("🔄 Loading HuggingFace models for news analysis...")
-            
-            # Sentiment analysis - multi-language for Indian context
-            print("  📊 Loading sentiment analyzer...")
-            self.sentiment_analyzer = pipeline(
-                "sentiment-analysis",
-                model="nlptown/bert-base-multilingual-uncased-sentiment",
-                device=-1  # CPU, use 0 for GPU
-            )
-            
-            # Named Entity Recognition
-            print("  🏷️ Loading NER tagger...")
-            self.ner_tagger = pipeline(
-                "ner",
-                model="dslim/bert-base-NER",
-                aggregation_strategy="simple"
-            )
-            
-            # Text summarization
-            print("  📝 Loading summarizer...")
-            self.summarizer = pipeline(
-                "summarization",
-                model="sshleifer/distilbart-cnn-12-6",
-                device=-1
-            )
-            
-            # Zero-shot classification for business categories
-            print("  🎯 Loading classifier...")
-            self.classifier = pipeline(
-                "zero-shot-classification",
-                model="facebook/bart-large-mnli",
-                device=-1
-            )
-            
+            from huggingface_hub import InferenceClient
+            token = os.environ.get('HF_TOKEN', None)
+            self._client = InferenceClient(token=token)
             self._is_initialized = True
-            print("✅ News intelligence ready!")
+            print("✅ HuggingFace Inference API ready!")
+            if not token:
+                print("⚠️ Note: Set HF_TOKEN env var for full access (free at hf.co/settings/tokens)")
             return True
-            
+        except ImportError:
+            print("⚠️ huggingface_hub not installed. Run: pip install huggingface_hub")
+            return False
         except Exception as e:
-            print(f"❌ Failed to load transformer models: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"❌ Failed to initialize Inference client: {e}")
             return False
     
     def analyze_sentiment(self, text: str) -> Dict[str, Any]:
-        """Analyze sentiment with detailed scores"""
-        if not self.initialize() or not self.sentiment_analyzer:
+        """Analyze sentiment using HuggingFace Inference API"""
+        if not self.initialize():
             return {'label': 'neutral', 'score': 0.5, 'confidence': 0.5}
         
         try:
-            result = self.sentiment_analyzer(text[:512])[0]  # Truncate
+            result = self._client.text_classification(
+                text=text[:512],
+                model="distilbert-base-uncased-finetuned-sst-2-english"
+            )
             
-            # Convert to standardized format
-            stars = int(result['label'].split()[0])
-            score = stars / 5.0
+            label = result[0]['label'].lower()
+            score = result[0]['score']
             
-            # Map to sentiment categories
-            if score >= 0.8:
-                label = 'very_positive'
-            elif score >= 0.6:
-                label = 'positive'
-            elif score >= 0.4:
-                label = 'neutral'
-            elif score >= 0.2:
-                label = 'negative'
+            if 'positive' in label:
+                if score >= 0.8:
+                    sentiment = 'very_positive'
+                else:
+                    sentiment = 'positive'
             else:
-                label = 'very_negative'
+                if score >= 0.8:
+                    sentiment = 'very_negative'
+                else:
+                    sentiment = 'negative'
             
             return {
-                'label': label,
+                'label': sentiment,
                 'score': round(score, 3),
-                'stars': stars,
-                'confidence': round(result['score'], 3),
-                'model': 'nlptown/bert-base-multilingual-uncased-sentiment'
+                'confidence': round(score, 3),
+                'model': 'distilbert-base-uncased-finetuned-sst-2-english'
             }
         except Exception as e:
             return {'label': 'neutral', 'score': 0.5, 'confidence': 0.5, 'error': str(e)}
     
     def extract_entities(self, text: str) -> Dict[str, Any]:
-        """Extract named entities with types"""
-        if not self.initialize() or not self.ner_tagger:
+        """Extract named entities using HuggingFace Inference API"""
+        if not self.initialize():
             return {'entities': [], 'business_entities': []}
         
         try:
-            entities = self.ner_tagger(text[:512])
+            entities = self._client.token_classification(
+                text=text[:512],
+                model="dslim/bert-base-NER"
+            )
             
-            # Group by type
             grouped = {}
             for ent in entities:
                 ent_type = ent['entity_group']
                 if ent_type not in grouped:
                     grouped[ent_type] = []
-                if ent['word'] not in grouped[ent_type]:
+                if ent['word'] not in [e['text'] for e in grouped[ent_type]]:
                     grouped[ent_type].append({
                         'text': ent['word'],
                         'confidence': round(ent['score'], 3)
                     })
             
-            # Find business-relevant entities
             business_keywords = ['restaurant', 'shop', 'store', 'service', 'company', 
                                'startup', 'tech', 'food', 'retail', 'cafe', 'hotel']
             
@@ -293,36 +254,35 @@ class NewsIntelligenceEngine:
             return {'entities': [], 'business_entities': [], 'error': str(e)}
     
     def summarize_text(self, text: str, max_length: int = 50) -> Dict[str, Any]:
-        """Generate summary of news article"""
-        if not self.initialize() or not self.summarizer:
+        """Generate summary using HuggingFace Inference API"""
+        if not self.initialize():
             return {'summary': text[:200] + '...', 'model': 'fallback'}
         
         try:
-            # Calculate appropriate lengths
             input_length = len(text.split())
-            max_len = min(max_length, input_length // 2)
+            max_len = min(max_length, max(10, input_length // 2))
             min_len = min(20, max_len // 2)
             
-            result = self.summarizer(
-                text[:1024],  # Truncate
+            result = self._client.summarization(
+                text=text[:1024],
+                model="sshleifer/distilbart-cnn-12-6",
                 max_length=max_len,
-                min_length=min_len,
-                do_sample=False
-            )[0]
+                min_length=min_len
+            )
             
             return {
                 'summary': result['summary_text'],
                 'original_length': input_length,
                 'summary_length': len(result['summary_text'].split()),
-                'compression_ratio': round(len(result['summary_text'].split()) / input_length, 2),
+                'compression_ratio': round(len(result['summary_text'].split()) / max(1, input_length), 2),
                 'model': 'sshleifer/distilbart-cnn-12-6'
             }
         except Exception as e:
             return {'summary': text[:200] + '...', 'error': str(e), 'model': 'fallback'}
     
     def classify_business_category(self, text: str) -> Dict[str, Any]:
-        """Zero-shot classification into business categories"""
-        if not self.initialize() or not self.classifier:
+        """Zero-shot classification using HuggingFace Inference API"""
+        if not self.initialize():
             return {'category': 'general', 'confidence': 0.5}
         
         candidate_labels = [
@@ -339,7 +299,11 @@ class NewsIntelligenceEngine:
         ]
         
         try:
-            result = self.classifier(text[:512], candidate_labels, multi_label=False)
+            result = self._client.zero_shot_classification(
+                text=text[:512],
+                labels=candidate_labels,
+                multi_label=False
+            )
             
             return {
                 'category': result['labels'][0],
