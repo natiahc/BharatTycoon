@@ -58,12 +58,14 @@ class SemanticSearchEngine:
     """
     Semantic search for Indian cities and states using sentence-transformers.
     Enables intelligent fuzzy matching like "delhi cafe" -> "Delhi restaurants"
+    Falls back to keyword search if model fails to load.
     """
     
     def __init__(self):
         self.model = None
         self.embeddings_cache = {}
         self._is_initialized = False
+        self._fallback_index = []
         
     def initialize(self):
         """Lazy load the model only when needed"""
@@ -72,6 +74,7 @@ class SemanticSearchEngine:
             
         if not SEMANTIC_SEARCH_AVAILABLE:
             print("⚠️ Semantic search disabled - sentence-transformers not available")
+            self._build_fallback_index()
             return False
             
         try:
@@ -82,8 +85,48 @@ class SemanticSearchEngine:
             print("✅ Semantic search ready!")
             return True
         except Exception as e:
-            print(f"❌ Failed to load semantic model: {e}")
+            print(f"⚠️ Failed to load semantic model, using keyword fallback: {e}")
+            self._build_fallback_index()
             return False
+    
+    def _build_fallback_index(self):
+        """Build a simple keyword index for fallback search"""
+        self._fallback_index = []
+        for state_id, state_data in INDIAN_STATES_DATA.items():
+            self._fallback_index.append({
+                'type': 'state',
+                'id': state_id,
+                'name': state_data['name'],
+                'keywords': f"{state_data['name']} {state_data['name'].lower()}".split()
+            })
+            for city in state_data['cities'][:10]:
+                self._fallback_index.append({
+                    'type': 'city',
+                    'id': city.lower().replace(" ", "-"),
+                    'name': city.title(),
+                    'state': state_data['name'],
+                    'state_id': state_id,
+                    'keywords': f"{city} {city.lower()} {state_data['name']}".split()
+                })
+    
+    def _keyword_search(self, query: str, top_k: int = 5):
+        """Simple keyword-based fallback search"""
+        query_words = query.lower().split()
+        results = []
+        for item in self._fallback_index:
+            score = 0
+            name_lower = item['name'].lower()
+            for word in query_words:
+                if word in name_lower:
+                    score += 50
+                if word in item.get('keywords', []):
+                    score += 25
+                if item['type'] == 'state' and 'state' in word:
+                    score += 30
+            if score > 0:
+                results.append({**item, 'score': min(score, 100), 'match_type': 'keyword'})
+        results.sort(key=lambda x: x['score'], reverse=True)
+        return results[:top_k]
     
     def _build_embeddings_index(self):
         """Pre-compute embeddings for all states and cities"""
@@ -113,15 +156,22 @@ class SemanticSearchEngine:
             print(f"✅ Indexed {len(texts)} locations with semantic embeddings")
     
     def search(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
-        """Semantic search for locations"""
-        if not self.initialize():
-            return []
-        
+        """Semantic search for locations (falls back to keyword search)"""
         start = time.time()
+        
+        if not self.initialize() or not self.model:
+            results = self._keyword_search(query, top_k)
+            return {
+                'query': query,
+                'results': results,
+                'total': len(results),
+                'processing_time_ms': round((time.time() - start) * 1000, 2),
+                'model': 'keyword_fallback'
+            }
+        
         query_embedding = self.model.encode(query.lower(), convert_to_tensor=True)
         scores = util.cos_sim(query_embedding, self.embeddings)[0]
         
-        # Get top-k results
         top_indices = scores.argsort(descending=True)[:top_k]
         
         results = []
