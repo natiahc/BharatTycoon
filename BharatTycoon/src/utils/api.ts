@@ -44,6 +44,46 @@ export interface Recommendation {
   reasons: string[];
 }
 
+export interface BusinessAction {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  effect: { type: string; value: number };
+  baseCost: number;
+  monthlyCost: number;
+  isRecurring: boolean;
+}
+
+export interface BalanceSheet {
+  assets: {
+    current_assets: Record<string, number>;
+    fixed_assets: Record<string, number>;
+    total_assets: number;
+  };
+  liabilities: {
+    current_liabilities: Record<string, number>;
+    long_term_liabilities: Record<string, number>;
+    total_liabilities: number;
+  };
+  equity: Record<string, number>;
+  accounting_check: Record<string, any>;
+}
+
+export interface BusinessAnalysis {
+  health_score: number;
+  health_status: string;
+  metrics: {
+    roi: number;
+    profit_margin: number;
+    current_ratio: number;
+    net_worth: number;
+  };
+  market_sentiment: string;
+  recommendations: string[];
+  ai_insight: string;
+}
+
 async function fetchAPI(endpoint: string, options?: RequestInit) {
   try {
     const response = await fetch(`${API_BASE}${endpoint}`, {
@@ -129,6 +169,54 @@ export const api = {
     answerQuestion: (question: string, topic = '') =>
       fetchAPI(`/ai/answer-question?question=${encodeURIComponent(question)}&topic=${topic}`),
     businessFaq: (topic: string) => fetchAPI(`/ai/business-faq?topic=${encodeURIComponent(topic)}`),
+  },
+
+  business: {
+    getActions: (businessType: string, cityTier: number, capital: number) =>
+      fetchAPI('/business/actions', {
+        method: 'POST',
+        body: JSON.stringify({ business_type: businessType, city_tier: cityTier, capital }),
+      }),
+    executeAction: (businessType: string, cityTier: number, capital: number, actionId: string, actionType: string, amount: number, currentState: any) =>
+      fetchAPI('/business/execute', {
+        method: 'POST',
+        body: JSON.stringify({
+          business_type: businessType,
+          city_tier: cityTier,
+          capital,
+          action_id: actionId,
+          action_type: actionType,
+          amount,
+          current_state: currentState
+        }),
+      }),
+    getBalanceSheet: (state: any) =>
+      fetchAPI('/business/balance-sheet', {
+        method: 'POST',
+        body: JSON.stringify(state),
+      }),
+    analyze: (businessType: string, cityTier: number, balanceSheet: any, monthlyRevenue: number, monthlyExpenses: number) =>
+      fetchAPI('/business/analyze', {
+        method: 'POST',
+        body: JSON.stringify({
+          business_type: businessType,
+          city_tier: cityTier,
+          balance_sheet: balanceSheet,
+          monthly_revenue: monthlyRevenue,
+          monthly_expenses: monthlyExpenses
+        }),
+      }),
+    forecast: (businessType: string, cityTier: number, monthlyRevenue: number, monthlyExpenses: number, activeActions: string[]) =>
+      fetchAPI('/business/forecast', {
+        method: 'POST',
+        body: JSON.stringify({
+          business_type: businessType,
+          city_tier: cityTier,
+          monthly_revenue: monthlyRevenue,
+          monthly_expenses: monthlyExpenses,
+          active_actions: activeActions
+        }),
+      }),
   },
 };
 
