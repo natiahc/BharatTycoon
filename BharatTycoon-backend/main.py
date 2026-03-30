@@ -729,10 +729,6 @@ def ml_detect_trends(news: List[dict]):
         "trends": trend_results
     }
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-
 
 # ============================================
 # BUSINESS SIMULATION ENDPOINTS
@@ -748,8 +744,6 @@ class ExecuteActionRequest(BaseModel):
     city_tier: int
     capital: float
     action_id: str
-    action_type: str  # purchase, hire, sell, marketing, upgrade, service
-    amount: float
     current_state: dict
 
 class BusinessAnalysisRequest(BaseModel):
@@ -906,46 +900,55 @@ def execute_business_action(request: ExecuteActionRequest):
     owner_equity = current.get("owner_equity", request.capital)
     active_actions = current.get("active_actions", [])
     
-    action_cost = round(request.amount * tier_mult)
+    business_type = request.business_type.lower()
+    if business_type not in BUSINESS_ACTIONS:
+        raise HTTPException(status_code=400, detail=f"Unknown business type: {business_type}")
     
-    if request.action_type == "purchase":
+    action = None
+    for a in BUSINESS_ACTIONS[business_type]:
+        if a["id"] == request.action_id:
+            action = a
+            break
+    
+    if not action:
+        raise HTTPException(status_code=400, detail=f"Unknown action: {request.action_id}")
+    
+    base_cost = action.get("baseCost", 0)
+    monthly_cost = action.get("monthlyCost", 0)
+    action_cost = round(base_cost * tier_mult)
+    action_monthly_cost = round(monthly_cost * tier_mult)
+    action_type = action.get("category", "asset")
+    
+    if action_type in ["asset", "upgrade", "inventory"]:
         if cash < action_cost:
             raise HTTPException(status_code=400, detail="Insufficient cash")
         cash -= action_cost
         assets[request.action_id] = assets.get(request.action_id, 0) + action_cost
         monthly_expenses += action_cost * 0.02
         
-    elif request.action_type == "hire":
-        monthly_expenses += action_cost
-        staff_cost += action_cost
+    elif action_type == "staff":
+        monthly_expenses += action_monthly_cost
+        staff_cost += action_monthly_cost
         active_actions.append(request.action_id)
         
-    elif request.action_type == "sell":
-        cash += action_cost
-        retained_earnings += action_cost * 0.3
-        inventory = max(0, inventory - request.amount)
-        
-    elif request.action_type == "marketing":
+    elif action_type == "marketing":
         if cash < action_cost:
             raise HTTPException(status_code=400, detail="Insufficient cash")
         cash -= action_cost
         monthly_expenses += action_cost
         active_actions.append(request.action_id)
         
-    elif request.action_type == "upgrade":
-        if cash < action_cost:
-            raise HTTPException(status_code=400, detail="Insufficient cash")
-        cash -= action_cost
-        assets[request.action_id] = assets.get(request.action_id, 0) + action_cost
-        
-    elif request.action_type == "service":
-        monthly_expenses += action_cost
+    elif action_type == "service":
+        monthly_expenses += action_monthly_cost
         active_actions.append(request.action_id)
     
     equipment_value = sum(assets.values())
     
     return {
         "action_executed": request.action_id,
+        "action_type": action_type,
+        "base_cost": action_cost,
+        "monthly_cost": action_monthly_cost,
         "balance_sheet": {
             "assets": {
                 "cash": round(cash, 2),
@@ -1196,4 +1199,9 @@ def forecast_business(request: dict):
             "avg_monthly_profit": round((cumulative_revenue - cumulative_expenses) / 6, 0)
         }
     }
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 
