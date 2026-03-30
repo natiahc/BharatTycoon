@@ -1,5 +1,5 @@
 from datetime import datetime
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List
@@ -7,8 +7,9 @@ from ai.unified_engine import UnifiedRecommendationEngine
 from ai.unified_simulation import MultiFactorSimulator
 from ai.unified_risk import MultiFactorRiskAnalyzer
 from ai.unified_advisor import MultiFactorAdvisor
+from ai.ml_engine import ml_engine
 
-app = FastAPI(title="BharatTycoon AI API")
+app = FastAPI(title="BharatTycoon AI API - Powered by HuggingFace Transformers")
 
 app.add_middleware(
     CORSMiddleware,
@@ -246,6 +247,163 @@ def submit_feedback(data: dict):
 def get_feedback():
     """Get all feedback (admin only)"""
     return {"feedbacks": getattr(app, 'feedbacks', [])}
+
+
+# ============================================
+# HUGGINGFACE ML ENDPOINTS
+# ============================================
+
+@app.get("/ml/status")
+def get_ml_status():
+    """Get status of all ML models"""
+    status = ml_engine.get_status()
+    return {
+        "ml_engine": "BharatTycoon ML Engine",
+        "powered_by": "HuggingFace Transformers",
+        "status": status,
+        "message": "All ML models are ready!" if status['initialized'] else "ML models loading on first use..."
+    }
+
+
+@app.get("/ml/initialize")
+def initialize_ml_models():
+    """Initialize all ML models (loads them into memory)"""
+    results = ml_engine.initialize_all()
+    return {
+        "initialized": results,
+        "total_models": len(results),
+        "ready": all(results.values()) if results else False,
+        "message": "All ML models initialized successfully!" if all(results.values()) else "Some models failed to load. Check logs."
+    }
+
+
+@app.get("/ml/search")
+def ml_smart_search(q: str, top_k: int = 5):
+    """
+    Semantic search using sentence-transformers.
+    Example: "delhi cafe" will find Delhi restaurants
+    """
+    results = ml_engine.smart_search(q, top_k)
+    return {
+        "query": results['query'],
+        "search_type": results['type'],
+        "results": results['results'],
+        "processing_time_ms": results.get('processing_time_ms', 0),
+        "models_used": ["all-MiniLM-L6-v2"] if results['type'] == 'semantic' else []
+    }
+
+
+@app.post("/ml/analyze-news")
+def ml_analyze_news(news: List[str]):
+    """
+    AI-powered news analysis using multiple HuggingFace models.
+    - Sentiment Analysis (nlptown/bert-base-multilingual-uncased-sentiment)
+    - Named Entity Recognition (dslim/bert-base-NER)
+    - Summarization (sshleifer/distilbart-cnn-12-6)
+    - Zero-shot Classification (facebook/bart-large-mnli)
+    """
+    if not news:
+        raise HTTPException(status_code=400, detail="No news articles provided")
+    
+    results = ml_engine.news_intelligence.analyze_news_article(news[0])
+    
+    return {
+        "total_articles": len(news),
+        "first_article_analysis": results,
+        "models_used": [
+            "nlptown/bert-base-multilingual-uncased-sentiment",
+            "dslim/bert-base-NER",
+            "sshleifer/distilbart-cnn-12-6",
+            "facebook/bart-large-mnli"
+        ]
+    }
+
+
+@app.post("/ml/analyze-city-news")
+def ml_analyze_city_news(city: str, news: List[str]):
+    """
+    Full AI analysis of city news including trend detection.
+    """
+    results = ml_engine.analyze_city_news(city, news)
+    return results
+
+
+@app.get("/ml/city-similarity")
+def ml_city_similarity(city: str):
+    """
+    Get embedding-based similarity between cities.
+    Uses sentence-transformers to find semantically similar cities.
+    """
+    viz_data = ml_engine.get_embedding_viz(city)
+    return viz_data
+
+
+@app.get("/ml/sentiment")
+def ml_sentiment(text: str):
+    """
+    Analyze sentiment of text using BERT-based model.
+    """
+    result = ml_engine.news_intelligence.analyze_sentiment(text)
+    return {
+        "text": text[:200],
+        "sentiment": result,
+        "model": "nlptown/bert-base-multilingual-uncased-sentiment"
+    }
+
+
+@app.get("/ml/entities")
+def ml_entities(text: str):
+    """
+    Extract named entities using BERT NER.
+    """
+    result = ml_engine.news_intelligence.extract_entities(text)
+    return {
+        "text": text[:200],
+        "entities": result,
+        "model": "dslim/bert-base-NER"
+    }
+
+
+@app.get("/ml/summarize")
+def ml_summarize(text: str, max_length: int = 50):
+    """
+    Summarize text using DistilBART.
+    """
+    result = ml_engine.news_intelligence.summarize_text(text, max_length)
+    return {
+        "original_text": text[:500],
+        "summary": result,
+        "model": "sshleifer/distilbart-cnn-12-6"
+    }
+
+
+@app.get("/ml/classify")
+def ml_classify(text: str):
+    """
+    Zero-shot classify text into business categories.
+    """
+    result = ml_engine.news_intelligence.classify_business_category(text)
+    return {
+        "text": text[:200],
+        "classification": result,
+        "model": "facebook/bart-large-mnli"
+    }
+
+
+@app.post("/ml/trends")
+def ml_detect_trends(news: List[dict]):
+    """
+    Detect emerging trends from news articles using AI.
+    """
+    articles = [n.get('title', '') for n in news if n.get('title')]
+    if not articles:
+        raise HTTPException(status_code=400, detail="No news titles provided")
+    
+    trend_results = ml_engine.trend_detector.analyze_trends([{'title': t} for t in articles])
+    return {
+        "articles_analyzed": len(articles),
+        "trends": trend_results
+    }
 
 if __name__ == "__main__":
     import uvicorn
