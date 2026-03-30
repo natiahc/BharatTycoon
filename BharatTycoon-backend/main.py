@@ -415,6 +415,171 @@ def ml_classify(text: str):
     }
 
 
+# ============================================
+# FINANCIAL SYSTEM ENDPOINTS
+# ============================================
+
+class FinancialReportRequest(BaseModel):
+    business_type: str  # restaurant, retail, tech, salon, tuition, manufacturing, transport, healthcare
+    city_tier: int  # 1 = Tier 1 (Mumbai, Delhi), 2 = Tier 2, 3 = Tier 3
+    initial_capital: float
+    months: int = 12
+
+
+class FinancialCompareRequest(BaseModel):
+    business_types: List[str]
+    city_tier: int
+    initial_capital: float
+
+
+@app.get("/financial/status")
+def get_financial_status():
+    """Check financial system status"""
+    return {
+        "financial_system": "Active",
+        "available_business_types": ["restaurant", "retail", "tech", "salon", "tuition", "manufacturing", "transport", "healthcare"],
+        "city_tiers": {
+            "1": "Tier 1 (Mumbai, Delhi, Bangalore, etc.)",
+            "2": "Tier 2 (Jaipur, Lucknow, etc.)",
+            "3": "Tier 3 (Smaller cities)"
+        }
+    }
+
+
+@app.post("/financial/report")
+def generate_financial_report(request: FinancialReportRequest):
+    """
+    Generate complete financial report for a business.
+    Returns balance sheet, income statement, cash flow, and financial ratios.
+    """
+    from ai.financial_system import generate_financial_report as gen_report
+    
+    result = gen_report(
+        business_type=request.business_type,
+        city_tier=request.city_tier,
+        initial_capital=request.initial_capital,
+        months=request.months
+    )
+    
+    return {
+        "report_type": "Financial Report",
+        "business_type": request.business_type,
+        "city_tier": request.city_tier,
+        "initial_capital": request.initial_capital,
+        **result
+    }
+
+
+@app.post("/financial/compare")
+def compare_businesses(request: FinancialCompareRequest):
+    """
+    Compare financial projections across multiple business types.
+    """
+    from ai.financial_system import BusinessFinancials
+    
+    comparisons = []
+    
+    for biz_type in request.business_types:
+        try:
+            bf = BusinessFinancials(biz_type, request.city_tier, request.initial_capital)
+            monthly = bf.calculate_monthly(12, growth_rate=0.05)
+            comparisons.append({
+                "business_type": biz_type,
+                "month_12": {
+                    "revenue": monthly["summary"]["revenue"],
+                    "net_profit": monthly["summary"]["net_profit"],
+                    "profit_margin": monthly["summary"]["profit_margin"],
+                    "net_worth": monthly["summary"]["net_worth"],
+                    "cash_on_hand": monthly["summary"]["cash_on_hand"]
+                },
+                "ratios": monthly["financial_ratios"],
+                "roi": round((monthly["summary"]["net_profit"] / request.initial_capital) * 100, 2)
+            })
+        except Exception as e:
+            comparisons.append({
+                "business_type": biz_type,
+                "error": str(e)
+            })
+    
+    # Sort by ROI
+    valid_comparisons = [c for c in comparisons if "error" not in c]
+    if valid_comparisons:
+        valid_comparisons.sort(key=lambda x: x.get("roi", 0), reverse=True)
+    
+    return {
+        "city_tier": request.city_tier,
+        "initial_capital": request.initial_capital,
+        "comparisons": comparisons,
+        "recommendation": valid_comparisons[0] if valid_comparisons else None
+    }
+
+
+@app.get("/financial/breakdown/{business_type}")
+def get_financial_breakdown(business_type: str, city_tier: int = 1, capital: float = 100000):
+    """
+    Get monthly financial breakdown for a business type.
+    """
+    from ai.financial_system import BusinessFinancials
+    
+    try:
+        bf = BusinessFinancials(business_type, city_tier, capital)
+        monthly_data = []
+        
+        for month in range(1, 13):
+            growth = 0.03 if month <= 6 else 0.05
+            report = bf.calculate_monthly(month, growth_rate=growth)
+            monthly_data.append({
+                "month": month,
+                "revenue": report["summary"]["revenue"],
+                "expenses": report["summary"]["expenses"],
+                "net_profit": report["summary"]["net_profit"],
+                "profit_margin": report["summary"]["profit_margin"],
+                "net_worth": report["summary"]["net_worth"],
+                "cash": report["summary"]["cash_on_hand"]
+            })
+        
+        return {
+            "business_type": business_type,
+            "city_tier": city_tier,
+            "initial_capital": capital,
+            "monthly_data": monthly_data,
+            "annual_summary": {
+                "total_revenue": sum(m["revenue"] for m in monthly_data),
+                "total_expenses": sum(m["expenses"] for m in monthly_data),
+                "total_profit": sum(m["net_profit"] for m in monthly_data),
+                "ending_net_worth": monthly_data[-1]["net_worth"],
+                "overall_roi": round((monthly_data[-1]["net_worth"] - capital) / capital * 100, 2)
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/financial/profit-loss")
+def get_profit_loss(data: dict):
+    """
+    Calculate profit/loss based on custom revenue and expenses.
+    """
+    revenue = data.get("revenue", 0)
+    expenses = data.get("expenses", {})
+    
+    total_expenses = sum(expenses.values())
+    net_profit = revenue - total_expenses
+    
+    return {
+        "revenue": revenue,
+        "expenses": expenses,
+        "total_expenses": total_expenses,
+        "net_profit": round(net_profit, 2),
+        "profit_margin": round((net_profit / revenue * 100) if revenue > 0 else 0, 2),
+        "status": "profitable" if net_profit > 0 else "loss" if net_profit < 0 else "break_even"
+    }
+
+
+# ============================================
+# ML TRENDS ENDPOINT
+# ============================================
+
 @app.post("/ml/trends")
 def ml_detect_trends(news: List[dict]):
     """
