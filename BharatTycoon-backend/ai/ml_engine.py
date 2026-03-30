@@ -187,7 +187,7 @@ class NewsIntelligenceEngine:
         try:
             result = self._client.text_classification(
                 text=text[:512],
-                model="distilbert-base-uncased-finetuned-sst-2-english"
+                model="distilbert/distilbert-base-uncased-finetuned-sst-2-english"
             )
             
             label = result[0]['label'].lower()
@@ -260,14 +260,10 @@ class NewsIntelligenceEngine:
         
         try:
             input_length = len(text.split())
-            max_len = min(max_length, max(10, input_length // 2))
-            min_len = min(20, max_len // 2)
             
             result = self._client.summarization(
                 text=text[:1024],
-                model="sshleifer/distilbart-cnn-12-6",
-                max_length=max_len,
-                min_length=min_len
+                model="sshleifer/distilbart-cnn-12-6"
             )
             
             return {
@@ -301,8 +297,7 @@ class NewsIntelligenceEngine:
         try:
             result = self._client.zero_shot_classification(
                 text=text[:512],
-                labels=candidate_labels,
-                multi_label=False
+                candidate_labels=candidate_labels
             )
             
             return {
