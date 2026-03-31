@@ -181,6 +181,70 @@ BharatTycoon - AI Business Simulation Game
     URL.revokeObjectURL(url);
   };
 
+  const renderBalanceSheet = (bs: ReturnType<typeof generateBalanceSheet>, title: string) => (
+    <div style={styles.balanceSheetContainer}>
+      <h2 style={styles.balanceSheetTitle}>{title}</h2>
+      
+      <div style={styles.balanceSheetSection}>
+        <h3 style={styles.balanceSheetSectionTitle}>ASSETS</h3>
+        
+        <div style={styles.balanceSheetSubSection}>
+          <h4 style={styles.balanceSheetSubTitle}>Current Assets</h4>
+          <div style={styles.balanceSheetRow}><span>Cash</span><span>₹{bs.assets.current.cash.toLocaleString()}</span></div>
+          <div style={styles.balanceSheetRow}><span>Accounts Receivable</span><span>₹{Math.round(bs.assets.current.accountsReceivable).toLocaleString()}</span></div>
+          <div style={styles.balanceSheetRow}><span>Inventory</span><span>₹{Math.round(bs.assets.current.inventory).toLocaleString()}</span></div>
+          <div style={{...styles.balanceSheetRow, ...styles.balanceSheetTotal}}><span>Total Current Assets</span><span>₹{Math.round(bs.assets.current.cash + bs.assets.current.accountsReceivable + bs.assets.current.inventory).toLocaleString()}</span></div>
+        </div>
+        
+        <div style={styles.balanceSheetSubSection}>
+          <h4 style={styles.balanceSheetSubTitle}>Fixed Assets</h4>
+          <div style={styles.balanceSheetRow}><span>Equipment</span><span>₹{Math.round(bs.assets.fixed.equipment).toLocaleString()}</span></div>
+          <div style={styles.balanceSheetRow}><span>Furniture</span><span>₹{Math.round(bs.assets.fixed.furniture).toLocaleString()}</span></div>
+          <div style={styles.balanceSheetRow}><span>Less: Depreciation</span><span style={{color: '#ef4444'}}>₹{Math.round(bs.assets.fixed.depreciation).toLocaleString()}</span></div>
+          <div style={{...styles.balanceSheetRow, ...styles.balanceSheetTotal}}><span>Total Fixed Assets</span><span>₹{Math.round(bs.assets.fixed.equipment + bs.assets.fixed.furniture + bs.assets.fixed.depreciation).toLocaleString()}</span></div>
+        </div>
+        
+        <div style={{...styles.balanceSheetRow, ...styles.balanceSheetGrandTotal}}><span>TOTAL ASSETS</span><span>₹{bs.totals.totalAssets.toLocaleString()}</span></div>
+      </div>
+      
+      <div style={styles.balanceSheetSection}>
+        <h3 style={styles.balanceSheetSectionTitle}>LIABILITIES</h3>
+        
+        <div style={styles.balanceSheetSubSection}>
+          <h4 style={styles.balanceSheetSubTitle}>Current Liabilities</h4>
+          <div style={styles.balanceSheetRow}><span>Accounts Payable</span><span>₹{Math.round(bs.liabilities.current.payables).toLocaleString()}</span></div>
+          <div style={styles.balanceSheetRow}><span>Taxes Payable</span><span>₹{Math.round(bs.liabilities.current.taxes).toLocaleString()}</span></div>
+          <div style={styles.balanceSheetRow}><span>Salaries Payable</span><span>₹{Math.round(bs.liabilities.current.salaries).toLocaleString()}</span></div>
+          <div style={{...styles.balanceSheetRow, ...styles.balanceSheetTotal}}><span>Total Current Liabilities</span><span>₹{Math.round(bs.totals.totalLiabilities).toLocaleString()}</span></div>
+        </div>
+        
+        <div style={styles.balanceSheetSubSection}>
+          <h4 style={styles.balanceSheetSubTitle}>Long-term Liabilities</h4>
+          <div style={styles.balanceSheetRow}><span>Loans Payable</span><span>₹{bs.liabilities.longTerm.loans.toLocaleString()}</span></div>
+        </div>
+        
+        <div style={{...styles.balanceSheetRow, ...styles.balanceSheetGrandTotal}}><span>TOTAL LIABILITIES</span><span>₹{bs.totals.totalLiabilities.toLocaleString()}</span></div>
+      </div>
+      
+      <div style={styles.balanceSheetSection}>
+        <h3 style={styles.balanceSheetSectionTitle}>EQUITY</h3>
+        <div style={styles.balanceSheetRow}><span>Owner's Capital</span><span>₹{bs.equity.ownerCapital.toLocaleString()}</span></div>
+        <div style={styles.balanceSheetRow}><span>Retained Earnings</span><span>₹{Math.round(bs.equity.retainedEarnings).toLocaleString()}</span></div>
+        <div style={{...styles.balanceSheetRow, ...styles.balanceSheetGrandTotal}}><span>TOTAL EQUITY</span><span>₹{Math.round(bs.equity.ownerCapital + bs.equity.retainedEarnings).toLocaleString()}</span></div>
+      </div>
+      
+      <div style={styles.balanceSheetSummary}>
+        <h3 style={styles.balanceSheetSectionTitle}>FINANCIAL SUMMARY</h3>
+        <div style={styles.balanceSheetSummaryGrid}>
+          <div><strong>Final Cash:</strong><br/>₹{gameState.cash.toLocaleString()}</div>
+          <div><strong>Total Revenue:</strong><br/>₹{(gameState.revenue * gameState.month).toLocaleString()}</div>
+          <div><strong>Total Costs:</strong><br/>₹{(gameState.costs * gameState.month).toLocaleString()}</div>
+          <div><strong>Net Worth:</strong><br/>₹{bs.totals.netWorth.toLocaleString()}</div>
+        </div>
+      </div>
+    </div>
+  );
+
   if (gameState.cash < 5000) {
     const bs = generateBalanceSheet();
     return (
@@ -189,20 +253,14 @@ BharatTycoon - AI Business Simulation Game
           <h1>💸 Out of Cash!</h1>
           <p>Your business couldn't survive. You made it {gameState.month} months.</p>
           
-          <div style={{background: '#1a1a2e', padding: '20px', borderRadius: '12px', margin: '20px auto', maxWidth: '500px', textAlign: 'left'}}>
-            <h3 style={{color: '#fff', marginBottom: '15px'}}>📊 Final Balance Sheet</h3>
-            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', color: '#aaa', fontSize: '14px'}}>
-              <div><strong style={{color: '#22c55e'}}>Total Assets</strong><br/>₹{bs.totals.totalAssets.toLocaleString()}</div>
-              <div><strong style={{color: '#ef4444'}}>Total Liabilities</strong><br/>₹{bs.totals.totalLiabilities.toLocaleString()}</div>
-              <div><strong style={{color: '#60a5fa'}}>Owner's Capital</strong><br/>₹{bs.equity.ownerCapital.toLocaleString()}</div>
-              <div><strong style={{color: '#fbbf24'}}>Net Worth</strong><br/>₹{bs.totals.netWorth.toLocaleString()}</div>
-            </div>
-          </div>
+          {renderBalanceSheet(bs, '📊 Final Balance Sheet')}
           
-          <button style={{...styles.button, background: '#22c55e', marginRight: '10px'}} onClick={downloadPDF}>
-            📄 Download Balance Sheet
-          </button>
-          <button style={styles.button} onClick={() => setGameState(null)}>Try Again</button>
+          <div style={{marginTop: '20px'}}>
+            <button style={{...styles.button, background: '#22c55e', marginRight: '10px'}} onClick={downloadPDF}>
+              📄 Download Balance Sheet
+            </button>
+            <button style={styles.button} onClick={() => setGameState(null)}>Try Again</button>
+          </div>
         </div>
       </div>
     );
@@ -217,20 +275,14 @@ BharatTycoon - AI Business Simulation Game
           <p>You built a successful business!</p>
           <p>Final Cash: ₹{gameState.cash.toLocaleString()}</p>
           
-          <div style={{background: '#1a1a2e', padding: '20px', borderRadius: '12px', margin: '20px auto', maxWidth: '500px', textAlign: 'left'}}>
-            <h3 style={{color: '#fff', marginBottom: '15px'}}>📊 Final Balance Sheet</h3>
-            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', color: '#aaa', fontSize: '14px'}}>
-              <div><strong style={{color: '#22c55e'}}>Total Assets</strong><br/>₹{bs.totals.totalAssets.toLocaleString()}</div>
-              <div><strong style={{color: '#ef4444'}}>Total Liabilities</strong><br/>₹{bs.totals.totalLiabilities.toLocaleString()}</div>
-              <div><strong style={{color: '#60a5fa'}}>Owner's Capital</strong><br/>₹{bs.equity.ownerCapital.toLocaleString()}</div>
-              <div><strong style={{color: '#fbbf24'}}>Net Worth</strong><br/>₹{bs.totals.netWorth.toLocaleString()}</div>
-            </div>
-          </div>
+          {renderBalanceSheet(bs, '📊 Final Balance Sheet')}
           
-          <button style={{...styles.button, background: '#22c55e', marginRight: '10px'}} onClick={downloadPDF}>
-            📄 Download Balance Sheet
-          </button>
-          <button style={styles.button} onClick={() => setGameState(null)}>Play Again</button>
+          <div style={{marginTop: '20px'}}>
+            <button style={{...styles.button, background: '#22c55e', marginRight: '10px'}} onClick={downloadPDF}>
+              📄 Download Balance Sheet
+            </button>
+            <button style={styles.button} onClick={() => setGameState(null)}>Play Again</button>
+          </div>
         </div>
       </div>
     );
@@ -341,5 +393,16 @@ const styles: Record<string, React.CSSProperties> = {
   resultScreen: { textAlign: 'center', padding: 60, animation: 'fadeIn 0.3s' },
   resultDetails: { marginTop: 24, fontSize: 18, color: '#94a3b8' },
   endScreen: { textAlign: 'center', padding: 60 },
-  button: { padding: '16px 32px', background: '#3b82f6', border: 'none', borderRadius: 8, color: '#fff', fontSize: 18, cursor: 'pointer', marginTop: 20 }
+  button: { padding: '16px 32px', background: '#3b82f6', border: 'none', borderRadius: 8, color: '#fff', fontSize: 18, cursor: 'pointer', marginTop: 20 },
+  balanceSheetContainer: { background: '#0f172a', border: '2px solid #334155', borderRadius: 16, padding: 24, margin: '20px auto', maxWidth: 600, textAlign: 'left' },
+  balanceSheetTitle: { fontSize: 20, color: '#fff', marginBottom: 20, textAlign: 'center' },
+  balanceSheetSection: { marginBottom: 24 },
+  balanceSheetSectionTitle: { fontSize: 14, color: '#94a3b8', borderBottom: '1px solid #334155', paddingBottom: 8, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 },
+  balanceSheetSubSection: { marginBottom: 16 },
+  balanceSheetSubTitle: { fontSize: 12, color: '#64748b', marginBottom: 8 },
+  balanceSheetRow: { display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 14, color: '#cbd5e1' },
+  balanceSheetTotal: { fontWeight: 600, borderTop: '1px dashed #334155', marginTop: 4 },
+  balanceSheetGrandTotal: { fontWeight: 700, fontSize: 16, color: '#22c55e', borderTop: '2px solid #22c55e', paddingTop: 12, marginTop: 8 },
+  balanceSheetSummary: { background: '#1e293b', borderRadius: 12, padding: 16, marginTop: 16 },
+  balanceSheetSummaryGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, textAlign: 'center', fontSize: 14 }
 };
