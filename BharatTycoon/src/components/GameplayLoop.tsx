@@ -41,13 +41,18 @@ export const GameplayLoop: React.FC<Props> = ({ user, gameState, setGameState })
 
   const fetchAiRecommendation = async (cards: DecisionCard[], state: typeof currentState) => {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
       const prompt = `I'm running a ${businessType} business in a Tier ${cityTier} city with ₹${state.cash.toLocaleString()} cash, making ₹${state.revenue.toLocaleString()}/month revenue. Given these options: ${cards.map(c => c.title).join(', ')}. Which should I prioritize for maximum growth?`;
       const response = await api.ml.textGeneration(prompt);
+      clearTimeout(timeoutId);
+      
       if (response?.generated_text) {
         setAiRecommendation(response.generated_text.slice(0, 150) + '...');
       }
     } catch {
-      // Silently fail - AI is optional
+      setAiRecommendation(null);
     }
   };
 
