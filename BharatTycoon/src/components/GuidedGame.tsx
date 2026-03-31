@@ -20,7 +20,7 @@ export const GuidedGame: React.FC<Props> = ({ user, gameState, setGameState }) =
 
   useEffect(() => {
     const businessType = gameState.businessType || 'restaurant';
-    const newCards = getRandomCards(businessType, gameState.cityTier, 3, phase, gameState.cash, gameState.month);
+    const newCards = getRandomCards(businessType, gameState.cityTier, 6, phase, gameState.cash, gameState.month);
     setCards(newCards);
   }, [gameState.month]);
 

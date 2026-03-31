@@ -86,12 +86,122 @@ export const GameplayLoop: React.FC<Props> = ({ user, gameState, setGameState })
 
   const journey = getJourneyMetrics(currentState.month);
 
+  const generateBalanceSheet = () => {
+    const totalAssets = currentState.cash + (currentState.revenue * 0.3);
+    const totalLiabilities = currentState.costs * 0.2;
+    const netWorth = totalAssets - totalLiabilities;
+    
+    return {
+      assets: {
+        current: { cash: currentState.cash, accountsReceivable: currentState.revenue * 0.1, inventory: currentState.costs * 0.15 },
+        fixed: { equipment: currentState.costs * 0.5, furniture: currentState.costs * 0.2, depreciation: -currentState.costs * 0.1 }
+      },
+      liabilities: { current: { payables: totalLiabilities * 0.6, taxes: totalLiabilities * 0.3, salaries: totalLiabilities * 0.1 }, longTerm: { loans: 0 } },
+      equity: { ownerCapital: user.capital, retainedEarnings: netWorth - user.capital },
+      totals: { totalAssets, totalLiabilities, netWorth }
+    };
+  };
+
+  const downloadPDF = () => {
+    const bs = generateBalanceSheet();
+    const content = `
+BALANCE SHEET - ${user.name}
+Business: ${businessType.toUpperCase()} | City: ${user.city} | Month: ${currentState.month}/18
+Generated: ${new Date().toLocaleDateString()}
+
+═══════════════════════════════════════════════════════════════
+ASSETS
+═══════════════════════════════════════════════════════════════
+Current Assets:
+  Cash                          ₹${bs.assets.current.cash.toLocaleString()}
+  Accounts Receivable            ₹${Math.round(bs.assets.current.accountsReceivable).toLocaleString()}
+  Inventory                     ₹${Math.round(bs.assets.current.inventory).toLocaleString()}
+  ─────────────────────────────────────────────────────────
+  Total Current Assets           ₹${Math.round(bs.assets.current.cash + bs.assets.current.accountsReceivable + bs.assets.current.inventory).toLocaleString()}
+
+Fixed Assets:
+  Equipment                     ₹${Math.round(bs.assets.fixed.equipment).toLocaleString()}
+  Furniture                     ₹${Math.round(bs.assets.fixed.furniture).toLocaleString()}
+  Less: Depreciation            ₹${Math.round(bs.assets.fixed.depreciation).toLocaleString()}
+  ─────────────────────────────────────────────────────────
+  Total Fixed Assets            ₹${Math.round(bs.assets.fixed.equipment + bs.assets.fixed.furniture + bs.assets.fixed.depreciation).toLocaleString()}
+
+═══════════════════════════════════════════════════════════════
+TOTAL ASSETS                   ₹${bs.totals.totalAssets.toLocaleString()}
+═══════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════
+LIABILITIES
+═══════════════════════════════════════════════════════════════
+Current Liabilities:
+  Accounts Payable              ₹${Math.round(bs.liabilities.current.payables).toLocaleString()}
+  Taxes Payable                 ₹${Math.round(bs.liabilities.current.taxes).toLocaleString()}
+  Salaries Payable              ₹${Math.round(bs.liabilities.current.salaries).toLocaleString()}
+  ─────────────────────────────────────────────────────────
+  Total Current Liabilities     ₹${Math.round(bs.totals.totalLiabilities).toLocaleString()}
+
+Long-term Liabilities:
+  Loans Payable                ₹${bs.liabilities.longTerm.loans.toLocaleString()}
+  ─────────────────────────────────────────────────────────
+
+═══════════════════════════════════════════════════════════════
+TOTAL LIABILITIES              ₹${bs.totals.totalLiabilities.toLocaleString()}
+═══════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════
+EQUITY
+═══════════════════════════════════════════════════════════════
+Owner's Capital                ₹${bs.equity.ownerCapital.toLocaleString()}
+Retained Earnings              ₹${Math.round(bs.equity.retainedEarnings).toLocaleString()}
+  ─────────────────────────────────────────────────────────
+TOTAL EQUITY                   ₹${Math.round(bs.equity.ownerCapital + bs.equity.retainedEarnings).toLocaleString()}
+
+═══════════════════════════════════════════════════════════════
+TOTAL LIABILITIES + EQUITY    ₹${(bs.totals.totalLiabilities + bs.equity.ownerCapital + bs.equity.retainedEarnings).toLocaleString()}
+═══════════════════════════════════════════════════════════════
+
+FINANCIAL SUMMARY
+─────────────────
+Final Cash:        ₹${currentState.cash.toLocaleString()}
+Total Revenue:     ₹${(currentState.revenue * currentState.month).toLocaleString()}
+Total Costs:      ₹${(currentState.costs * currentState.month).toLocaleString()}
+Net Worth:        ₹${bs.totals.netWorth.toLocaleString()}
+
+BharatTycoon - AI Business Simulation Game
+    `;
+    
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `BalanceSheet_${businessType}_Month${currentState.month}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   if (currentState.gameOver) {
+    const bs = generateBalanceSheet();
     return (
       <div style={styles.container}>
         <div style={styles.gameOver}>
           <h1>Game Over 💸</h1>
           <p>Your business ran out of cash after {currentState.month} months.</p>
+          
+          <div style={{background: '#1a1a2e', padding: '20px', borderRadius: '12px', margin: '20px 0', textAlign: 'left'}}>
+            <h3 style={{color: '#fff', marginBottom: '15px'}}>📊 Final Balance Sheet</h3>
+            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', color: '#aaa', fontSize: '14px'}}>
+              <div><strong style={{color: '#22c55e'}}>Total Assets</strong><br/>₹{bs.totals.totalAssets.toLocaleString()}</div>
+              <div><strong style={{color: '#ef4444'}}>Total Liabilities</strong><br/>₹{bs.totals.totalLiabilities.toLocaleString()}</div>
+              <div><strong style={{color: '#60a5fa'}}>Owner's Capital</strong><br/>₹{bs.equity.ownerCapital.toLocaleString()}</div>
+              <div><strong style={{color: '#fbbf24'}}>Net Worth</strong><br/>₹{bs.totals.netWorth.toLocaleString()}</div>
+            </div>
+          </div>
+          
+          <button style={{...styles.button, background: '#22c55e', marginRight: '10px'}} onClick={downloadPDF}>
+            📄 Download Balance Sheet
+          </button>
           <button style={styles.button} onClick={() => setGameState(null)}>Try Again</button>
         </div>
       </div>
@@ -99,12 +209,27 @@ export const GameplayLoop: React.FC<Props> = ({ user, gameState, setGameState })
   }
 
   if (currentState.victory) {
+    const bs = generateBalanceSheet();
     return (
       <div style={styles.container}>
         <div style={styles.victory}>
           <h1>🎉 Victory!</h1>
           <p>You successfully built a business for 18 months!</p>
           <p>Final Cash: ₹{currentState.cash.toLocaleString()}</p>
+          
+          <div style={{background: '#1a1a2e', padding: '20px', borderRadius: '12px', margin: '20px 0', textAlign: 'left'}}>
+            <h3 style={{color: '#fff', marginBottom: '15px'}}>📊 Final Balance Sheet</h3>
+            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', color: '#aaa', fontSize: '14px'}}>
+              <div><strong style={{color: '#22c55e'}}>Total Assets</strong><br/>₹{bs.totals.totalAssets.toLocaleString()}</div>
+              <div><strong style={{color: '#ef4444'}}>Total Liabilities</strong><br/>₹{bs.totals.totalLiabilities.toLocaleString()}</div>
+              <div><strong style={{color: '#60a5fa'}}>Owner's Capital</strong><br/>₹{bs.equity.ownerCapital.toLocaleString()}</div>
+              <div><strong style={{color: '#fbbf24'}}>Net Worth</strong><br/>₹{bs.totals.netWorth.toLocaleString()}</div>
+            </div>
+          </div>
+          
+          <button style={{...styles.button, background: '#22c55e', marginRight: '10px'}} onClick={downloadPDF}>
+            📄 Download Balance Sheet
+          </button>
           <button style={styles.button} onClick={() => setGameState(null)}>Play Again</button>
         </div>
       </div>
